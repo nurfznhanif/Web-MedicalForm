@@ -7,21 +7,35 @@ use yii\helpers\Html;
 
 $this->title = 'Print Form Pengkajian';
 
+// Get data
+$data = $model->getDisplayData();
+$registrasi = $model->registrasi;
+
 // CSS untuk print
 $this->registerCss("
 @media print {
     .no-print { display: none !important; }
-    body { font-size: 12px; }
+    body { font-size: 12px; line-height: 1.3; }
     .print-header { border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px; }
     table { border-collapse: collapse; width: 100%; }
     table, th, td { border: 1px solid black; }
-    th, td { padding: 5px; text-align: left; }
+    th, td { padding: 4px; text-align: left; font-size: 11px; }
     .checkbox-item { display: inline-block; margin-right: 15px; }
     .form-section { margin-bottom: 15px; border: 1px solid #000; padding: 10px; }
     .section-title { font-weight: bold; background-color: #f0f0f0; padding: 5px; margin-bottom: 10px; }
+    .page-break { page-break-before: always; }
 }
 
-body { font-family: Arial, sans-serif; font-size: 12px; }
+body { 
+    font-family: Arial, sans-serif; 
+    font-size: 12px; 
+    line-height: 1.4; 
+    color: #000; 
+    background: white; 
+    margin: 0; 
+    padding: 20px; 
+}
+
 .print-header { 
     display: flex; 
     justify-content: space-between; 
@@ -30,61 +44,74 @@ body { font-family: Arial, sans-serif; font-size: 12px; }
     padding-bottom: 10px; 
     margin-bottom: 20px; 
 }
+
 .logo-section { text-align: right; }
+
 .patient-info { 
     background: #f8f9fa; 
     border: 1px solid #000; 
     padding: 10px; 
     margin-bottom: 15px; 
 }
+
 .form-section { 
     border: 1px solid #000; 
     padding: 10px; 
     margin-bottom: 15px; 
 }
+
 .section-title { 
     font-weight: bold; 
     background-color: #e9ecef; 
     padding: 5px; 
     margin-bottom: 10px; 
 }
+
 .checkbox-group { 
     display: flex; 
     flex-wrap: wrap; 
     gap: 15px; 
 }
+
 .checkbox-item { 
     display: flex; 
     align-items: center; 
     gap: 5px; 
 }
+
 .checkbox-item input[type='checkbox'] { 
     transform: scale(1.2); 
 }
+
 .vital-grid { 
     display: grid; 
     grid-template-columns: repeat(4, 1fr); 
     gap: 10px; 
 }
+
 .antropometri-grid { 
     display: grid; 
     grid-template-columns: repeat(3, 1fr); 
     gap: 10px; 
 }
+
 .resiko-table { 
     width: 100%; 
     border-collapse: collapse; 
     margin-top: 10px; 
 }
+
 .resiko-table th, .resiko-table td { 
     border: 1px solid #000; 
     padding: 5px; 
     font-size: 11px; 
 }
+
 .resiko-table th { 
     background-color: #e9ecef; 
     font-weight: bold; 
 }
+
 .text-center { text-align: center; }
 .text-right { text-align: right; }
 .flex-between { display: flex; justify-content: space-between; }
@@ -97,8 +124,8 @@ body { font-family: Arial, sans-serif; font-size: 12px; }
 ?>
 
 <div class="no-print" style="margin-bottom: 20px;">
-    <?= Html::button('Print', ['onclick' => 'window.print()', 'class' => 'btn btn-primary']) ?>
-    <?= Html::a('Kembali', ['view-form', 'id' => $model->id_form_data], ['class' => 'btn btn-secondary']) ?>
+    <?= Html::button('<i class="fas fa-print"></i> Print', ['onclick' => 'window.print()', 'class' => 'btn btn-primary']) ?>
+    <?= Html::a('<i class="fas fa-arrow-left"></i> Kembali', ['view-form', 'id' => $model->id_form_data], ['class' => 'btn btn-secondary']) ?>
 </div>
 
 <div class="print-content">
@@ -125,9 +152,9 @@ body { font-family: Arial, sans-serif; font-size: 12px; }
     <div class="patient-info">
         <div class="row">
             <div class="col-6">
-                <strong>Nama Lengkap : PASIEN CONTOH</strong><br>
-                <strong>Tanggal Lahir : 20 April 1998</strong><br>
-                <strong>No. RM : 00-17-XX-XX</strong>
+                <strong>Nama Lengkap : <?= Html::encode($registrasi->nama_pasien ?? 'PASIEN CONTOH') ?></strong><br>
+                <strong>Tanggal Lahir : <?= $registrasi->tanggal_lahir ? date('d F Y', strtotime($registrasi->tanggal_lahir)) : '20 April 1998' ?></strong><br>
+                <strong>No. RM : <?= Html::encode($registrasi->no_rekam_medis ?? '00-17-XX-XX') ?></strong>
             </div>
             <div class="col-6 text-right">
                 <div style="border: 1px solid #000; padding: 10px; display: inline-block;">
@@ -143,9 +170,9 @@ body { font-family: Arial, sans-serif; font-size: 12px; }
     <!-- Form Content -->
     <div class="form-section">
         <div class="flex-between mb-2">
-            <div><strong>Tanggal Pengkajian:</strong> <?= $model->tanggal_pengkajian ?: '13/11/2024' ?></div>
-            <div><strong>Jam Pengkajian:</strong> <?= $model->jam_pengkajian ?: '13:40' ?></div>
-            <div><strong>Poliklinik:</strong> <?= $model->poliklinik ?: 'KLINIK OBGYN' ?></div>
+            <div><strong>Tanggal Pengkajian:</strong> <?= $data['tanggal_pengkajian'] ?? '13/11/2024' ?></div>
+            <div><strong>Jam Pengkajian:</strong> <?= $data['jam_pengkajian'] ?? '13:40' ?></div>
+            <div><strong>Poliklinik:</strong> <?= $data['poliklinik'] ?? 'KLINIK OBGYN' ?></div>
         </div>
     </div>
 
@@ -158,16 +185,16 @@ body { font-family: Arial, sans-serif; font-size: 12px; }
                 <strong>1. Cara masuk:</strong><br>
                 <div class="checkbox-group">
                     <div class="checkbox-item">
-                        <input type="checkbox" <?= ($model->cara_masuk == 'jalan_tanpa_bantuan') ? 'checked' : '' ?>> Jalan tanpa bantuan
+                        <input type="checkbox" <?= ($data['cara_masuk'] ?? '') == 'jalan_tanpa_bantuan' ? 'checked' : '' ?>> Jalan tanpa bantuan
                     </div>
                     <div class="checkbox-item">
-                        <input type="checkbox" <?= ($model->cara_masuk == 'kursi_tanpa_bantuan') ? 'checked' : '' ?>> Kursi tanpa bantuan
+                        <input type="checkbox" <?= ($data['cara_masuk'] ?? '') == 'kursi_tanpa_bantuan' ? 'checked' : '' ?>> Kursi tanpa bantuan
                     </div>
                     <div class="checkbox-item">
-                        <input type="checkbox" <?= ($model->cara_masuk == 'tempat_tidur_dorong') ? 'checked' : '' ?>> Tempat tidur dorong
+                        <input type="checkbox" <?= ($data['cara_masuk'] ?? '') == 'tempat_tidur_dorong' ? 'checked' : '' ?>> Tempat tidur dorong
                     </div>
                     <div class="checkbox-item">
-                        <input type="checkbox" <?= ($model->cara_masuk == 'lain_lain') ? 'checked' : '' ?>> Lain-lain
+                        <input type="checkbox" <?= ($data['cara_masuk'] ?? '') == 'lain_lain' ? 'checked' : '' ?>> Lain-lain
                     </div>
                 </div>
             </div>
@@ -175,26 +202,26 @@ body { font-family: Arial, sans-serif; font-size: 12px; }
                 <strong>2. Anamnesis:</strong><br>
                 <div class="checkbox-group">
                     <div class="checkbox-item">
-                        <input type="checkbox" <?= ($model->anamnesis == 'autoanamnesis') ? 'checked' : '' ?>> Autoanamnesis
+                        <input type="checkbox" <?= ($data['anamnesis'] ?? '') == 'autoanamnesis' ? 'checked' : '' ?>> Autoanamnesis
                     </div>
                     <div class="checkbox-item">
-                        <input type="checkbox" <?= ($model->anamnesis == 'aloanamnesis') ? 'checked' : '' ?>> Aloanamnesis
+                        <input type="checkbox" <?= ($data['anamnesis'] ?? '') == 'aloanamnesis' ? 'checked' : '' ?>> Aloanamnesis
                     </div>
                 </div>
                 <div style="margin-top: 10px;">
-                    Diperoleh : <u>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</u>
-                    Hubungan : <u>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</u>
+                    Diperoleh : <u><?= Html::encode($data['anamnesis_detail']['diperoleh'] ?? '') ?></u>
+                    Hubungan : <u><?= Html::encode($data['anamnesis_detail']['hubungan'] ?? '') ?></u>
                 </div>
             </div>
         </div>
 
         <div class="mb-2">
-            <strong>Alergi:</strong> <?= Html::encode($model->alergi ?: 'seiring nyeri bagian vagina, flek sudah 2 hr yll') ?>
+            <strong>Alergi:</strong> <?= Html::encode($data['alergi'] ?? 'seiring nyeri bagian vagina, flek sudah 2 hr yll') ?>
         </div>
 
         <div class="mb-2">
             <strong>3. Keluhan utama saat ini:</strong><br>
-            <?= nl2br(Html::encode($model->keluhan_utama ?: 'seiring nyeri bagian vagina, flek sudah 2 hr yll')) ?>
+            <?= nl2br(Html::encode($data['keluhan_utama'] ?? 'seiring nyeri bagian vagina, flek sudah 2 hr yll')) ?>
         </div>
     </div>
 
@@ -202,56 +229,58 @@ body { font-family: Arial, sans-serif; font-size: 12px; }
     <div class="form-section">
         <div class="section-title">4. Pemeriksaan fisik:</div>
 
+        <?php $fisik = $data['pemeriksaan_fisik'] ?? []; ?>
+
         <div class="row mb-2">
             <div class="col-4">
                 <strong>a. Keadaan umum:</strong><br>
                 <div class="checkbox-item">
-                    <input type="checkbox" <?= ($model->keadaan_umum == 'tidak_tampak_sakit') ? 'checked' : '' ?>> Tidak tampak sakit
+                    <input type="checkbox" <?= ($fisik['keadaan_umum'] ?? '') == 'tidak_tampak_sakit' ? 'checked' : '' ?>> Tidak tampak sakit
                 </div>
                 <div class="checkbox-item">
-                    <input type="checkbox" <?= ($model->keadaan_umum == 'sakit_ringan') ? 'checked' : '' ?>> Sakit ringan
+                    <input type="checkbox" <?= ($fisik['keadaan_umum'] ?? '') == 'sakit_ringan' ? 'checked' : '' ?>> Sakit ringan
                 </div>
                 <div class="checkbox-item">
-                    <input type="checkbox" <?= ($model->keadaan_umum == 'sedang') ? 'checked' : '' ?>> Sedang
+                    <input type="checkbox" <?= ($fisik['keadaan_umum'] ?? '') == 'sedang' ? 'checked' : '' ?>> Sedang
                 </div>
                 <div class="checkbox-item">
-                    <input type="checkbox" <?= ($model->keadaan_umum == 'berat') ? 'checked' : '' ?>> Berat
+                    <input type="checkbox" <?= ($fisik['keadaan_umum'] ?? '') == 'berat' ? 'checked' : '' ?>> Berat
                 </div>
             </div>
             <div class="col-4">
                 <strong>b. Warna kulit:</strong><br>
                 <div class="checkbox-item">
-                    <input type="checkbox" <?= ($model->warna_kulit == 'normal') ? 'checked' : '' ?>> Normal
+                    <input type="checkbox" <?= ($fisik['warna_kulit'] ?? '') == 'normal' ? 'checked' : '' ?>> Normal
                 </div>
                 <div class="checkbox-item">
-                    <input type="checkbox" <?= ($model->warna_kulit == 'sianosis') ? 'checked' : '' ?>> Sianosis
+                    <input type="checkbox" <?= ($fisik['warna_kulit'] ?? '') == 'sianosis' ? 'checked' : '' ?>> Sianosis
                 </div>
                 <div class="checkbox-item">
-                    <input type="checkbox" <?= ($model->warna_kulit == 'pucat') ? 'checked' : '' ?>> Pucat
+                    <input type="checkbox" <?= ($fisik['warna_kulit'] ?? '') == 'pucat' ? 'checked' : '' ?>> Pucat
                 </div>
                 <div class="checkbox-item">
-                    <input type="checkbox" <?= ($model->warna_kulit == 'kemerahan') ? 'checked' : '' ?>> Kemerahan
+                    <input type="checkbox" <?= ($fisik['warna_kulit'] ?? '') == 'kemerahan' ? 'checked' : '' ?>> Kemerahan
                 </div>
             </div>
             <div class="col-4">
                 <strong>Kesadaran:</strong><br>
                 <div class="checkbox-item">
-                    <input type="checkbox" <?= ($model->kesadaran == 'compos_mentis') ? 'checked' : '' ?>> Compos mentis
+                    <input type="checkbox" <?= ($fisik['kesadaran'] ?? '') == 'compos_mentis' ? 'checked' : '' ?>> Compos mentis
                 </div>
                 <div class="checkbox-item">
-                    <input type="checkbox" <?= ($model->kesadaran == 'apatis') ? 'checked' : '' ?>> Apatis
+                    <input type="checkbox" <?= ($fisik['kesadaran'] ?? '') == 'apatis' ? 'checked' : '' ?>> Apatis
                 </div>
                 <div class="checkbox-item">
-                    <input type="checkbox" <?= ($model->kesadaran == 'somnolent') ? 'checked' : '' ?>> Somnolent
+                    <input type="checkbox" <?= ($fisik['kesadaran'] ?? '') == 'somnolent' ? 'checked' : '' ?>> Somnolent
                 </div>
                 <div class="checkbox-item">
-                    <input type="checkbox" <?= ($model->kesadaran == 'sopor') ? 'checked' : '' ?>> Sopor
+                    <input type="checkbox" <?= ($fisik['kesadaran'] ?? '') == 'sopor' ? 'checked' : '' ?>> Sopor
                 </div>
                 <div class="checkbox-item">
-                    <input type="checkbox" <?= ($model->kesadaran == 'soporokoma') ? 'checked' : '' ?>> Soporokoma
+                    <input type="checkbox" <?= ($fisik['kesadaran'] ?? '') == 'soporokoma' ? 'checked' : '' ?>> Soporokoma
                 </div>
                 <div class="checkbox-item">
-                    <input type="checkbox" <?= ($model->kesadaran == 'koma') ? 'checked' : '' ?>> Koma
+                    <input type="checkbox" <?= ($fisik['kesadaran'] ?? '') == 'koma' ? 'checked' : '' ?>> Koma
                 </div>
             </div>
         </div>
@@ -259,11 +288,12 @@ body { font-family: Arial, sans-serif; font-size: 12px; }
         <!-- Tanda Vital -->
         <div class="mb-2">
             <strong>Tanda vital:</strong>
+            <?php $vital = $fisik['tanda_vital'] ?? []; ?>
             <div class="vital-grid">
-                <div>TD : <?= Html::encode($model->tanda_vital_td ?: '130/92 mmHg') ?></div>
-                <div>P : <?= Html::encode($model->tanda_vital_p ?: 'x/menit') ?></div>
-                <div>N : <?= Html::encode($model->tanda_vital_n ?: '124 x/menit') ?></div>
-                <div>S : <?= Html::encode($model->tanda_vital_s ?: '36 oC') ?></div>
+                <div>TD : <?= Html::encode($vital['td'] ?? '130/92 mmHg') ?></div>
+                <div>P : <?= Html::encode($vital['p'] ?? 'x/menit') ?></div>
+                <div>N : <?= Html::encode($vital['n'] ?? '124 x/menit') ?></div>
+                <div>S : <?= Html::encode($vital['s'] ?? '36 oC') ?></div>
             </div>
         </div>
 
@@ -271,20 +301,22 @@ body { font-family: Arial, sans-serif; font-size: 12px; }
         <div class="row mb-2">
             <div class="col-6">
                 <strong>Fungsional:</strong><br>
-                1. Alat bantu : <?= Html::encode($model->fungsi_alat_bantu ?: '') ?><br>
-                2. Prothesa : <?= Html::encode($model->fungsi_prothesa ?: '') ?><br>
-                3. Cacat tubuh : <?= Html::encode($model->fungsi_cacat_tubuh ?: '') ?><br>
-                4. ADL : <?= Html::encode($model->fungsi_adl ?: '') ?><br>
-                5. Riwayat jatuh : Mandiri<br>
+                <?php $fungsional = $fisik['fungsional'] ?? []; ?>
+                1. Alat bantu : <?= Html::encode($fungsional['alat_bantu'] ?? '') ?><br>
+                2. Prothesa : <?= Html::encode($fungsional['prothesa'] ?? '') ?><br>
+                3. Cacat tubuh : <?= Html::encode($fungsional['cacat_tubuh'] ?? '') ?><br>
+                4. ADL : <?= Html::encode($fungsional['adl'] ?? '') ?><br>
+                5. Riwayat jatuh : <?= Html::encode($fungsional['riwayat_jatuh'] ?? 'Mandiri') ?><br>
             </div>
             <div class="col-6">
                 <strong>Antropometri:</strong><br>
+                <?php $antro = $fisik['antropometri'] ?? []; ?>
                 <div class="antropometri-grid">
-                    <div>Berat : <?= $model->antro_berat ?: '62' ?> Kg</div>
-                    <div>Tinggi badan : <?= $model->antro_tinggi ?: '50' ?> Cm</div>
-                    <div>Panjang badan (PB) : <?= $model->antro_lingkar ?: '' ?> Cm</div>
+                    <div>Berat : <?= $antro['berat'] ?? '62' ?> Kg</div>
+                    <div>Tinggi badan : <?= $antro['tinggi'] ?? '160' ?> Cm</div>
+                    <div>Panjang badan (PB) : <?= $antro['lingkar'] ?? '' ?> Cm</div>
                     <div>Lingkar kepala (LK) : __ Cm</div>
-                    <div>IMT : <?= $model->antro_imt ?: '' ?></div>
+                    <div>IMT : <?= $antro['imt'] ?? '' ?></div>
                 </div>
                 <div style="margin-top: 10px;">
                     <strong>Catatan:</strong><br>
@@ -298,13 +330,13 @@ body { font-family: Arial, sans-serif; font-size: 12px; }
             <strong>c. Status gizi:</strong>
             <div class="checkbox-group">
                 <div class="checkbox-item">
-                    <input type="checkbox" <?= ($model->status_gizi == 'ideal') ? 'checked' : '' ?>> Ideal
+                    <input type="checkbox" <?= ($data['status_gizi'] ?? '') == 'ideal' ? 'checked' : '' ?>> Ideal
                 </div>
                 <div class="checkbox-item">
-                    <input type="checkbox" <?= ($model->status_gizi == 'kurang') ? 'checked' : '' ?>> Kurang
+                    <input type="checkbox" <?= ($data['status_gizi'] ?? '') == 'kurang' ? 'checked' : '' ?>> Kurang
                 </div>
                 <div class="checkbox-item">
-                    <input type="checkbox" <?= ($model->status_gizi == 'obesitas') ? 'checked' : '' ?>> Obesitas / overweight
+                    <input type="checkbox" <?= ($data['status_gizi'] ?? '') == 'obesitas' ? 'checked' : '' ?>> Obesitas / overweight
                 </div>
             </div>
         </div>
@@ -312,38 +344,39 @@ body { font-family: Arial, sans-serif; font-size: 12px; }
 
     <!-- Riwayat Penyakit -->
     <div class="form-section">
+        <?php $riwayat = $data['riwayat_penyakit'] ?? []; ?>
         <div class="row mb-2">
             <div class="col-4">
                 <strong>5. Riwayat penyakit sekarang:</strong><br>
                 <div class="checkbox-item">
-                    <input type="checkbox" <?= ($model->riwayat_penyakit_sekarang == 'dm') ? 'checked' : '' ?>> DM
+                    <input type="checkbox" <?= ($riwayat['sekarang'] ?? '') == 'dm' ? 'checked' : '' ?>> DM
                 </div>
                 <div class="checkbox-item">
-                    <input type="checkbox" <?= ($model->riwayat_penyakit_sekarang == 'hipertensi') ? 'checked' : '' ?>> Hipertensi
+                    <input type="checkbox" <?= ($riwayat['sekarang'] ?? '') == 'hipertensi' ? 'checked' : '' ?>> Hipertensi
                 </div>
                 <div class="checkbox-item">
-                    <input type="checkbox" <?= ($model->riwayat_penyakit_sekarang == 'jantung') ? 'checked' : '' ?>> Jantung
+                    <input type="checkbox" <?= ($riwayat['sekarang'] ?? '') == 'jantung' ? 'checked' : '' ?>> Jantung
                 </div>
                 <div class="checkbox-item">
-                    <input type="checkbox" <?= ($model->riwayat_penyakit_sekarang == 'lain_lain') ? 'checked' : '' ?>> Lain-lain
+                    <input type="checkbox" <?= ($riwayat['sekarang'] ?? '') == 'lain_lain' ? 'checked' : '' ?>> Lain-lain
                 </div>
             </div>
             <div class="col-4">
                 <strong>6. Riwayat penyakit sebelumnya:</strong><br>
                 <div class="checkbox-item">
-                    <input type="checkbox" <?= ($model->riwayat_penyakit_sebelumnya == 'tidak') ? 'checked' : '' ?>> Tidak
+                    <input type="checkbox" <?= ($riwayat['sebelumnya'] ?? '') == 'tidak' ? 'checked' : '' ?>> Tidak
                 </div>
                 <div class="checkbox-item">
-                    <input type="checkbox" <?= ($model->riwayat_penyakit_sebelumnya == 'ya') ? 'checked' : '' ?>> Ya
+                    <input type="checkbox" <?= ($riwayat['sebelumnya'] ?? '') == 'ya' ? 'checked' : '' ?>> Ya
                 </div>
             </div>
             <div class="col-4">
                 <strong>7. Riwayat penyakit keluarga:</strong><br>
                 <div class="checkbox-item">
-                    <input type="checkbox" <?= ($model->riwayat_penyakit_keluarga == 'tidak') ? 'checked' : '' ?>> Tidak
+                    <input type="checkbox" <?= ($riwayat['keluarga'] ?? '') == 'tidak' ? 'checked' : '' ?>> Tidak
                 </div>
                 <div class="checkbox-item">
-                    <input type="checkbox" <?= ($model->riwayat_penyakit_keluarga == 'ya') ? 'checked' : '' ?>> Ya
+                    <input type="checkbox" <?= ($riwayat['keluarga'] ?? '') == 'ya' ? 'checked' : '' ?>> Ya
                 </div>
             </div>
         </div>
@@ -358,30 +391,32 @@ body { font-family: Arial, sans-serif; font-size: 12px; }
             <div class="col-6">
                 <strong>9. Riwayat operasi:</strong>
                 <div class="checkbox-item">
-                    <input type="checkbox" <?= ($model->riwayat_operasi == 'Tidak') ? 'checked' : '' ?>> Tidak
+                    <input type="checkbox" <?= ($data['riwayat_operasi'] ?? '') == 'tidak' ? 'checked' : '' ?>> Tidak
                 </div>
                 <div class="checkbox-item">
-                    <input type="checkbox" <?= ($model->riwayat_operasi == 'Ya') ? 'checked' : '' ?>> Ya
+                    <input type="checkbox" <?= ($data['riwayat_operasi'] ?? '') == 'ya' ? 'checked' : '' ?>> Ya
                 </div>
-                <?php if ($model->riwayat_operasi == 'Ya'): ?>
+                <?php if (($data['riwayat_operasi'] ?? '') == 'ya'): ?>
+                    <?php $operasiDetail = $data['operasi_detail'] ?? []; ?>
                     <div style="margin-left: 20px;">
-                        Operasi apa? : APP<br>
-                        Kapan? : 2017
+                        Operasi apa? : <?= Html::encode($operasiDetail['apa'] ?? 'APP') ?><br>
+                        Kapan? : <?= Html::encode($operasiDetail['kapan'] ?? '2017') ?>
                     </div>
                 <?php endif; ?>
             </div>
             <div class="col-6">
                 <strong>10. Riwayat pernah dirawat di RS:</strong>
                 <div class="checkbox-item">
-                    <input type="checkbox" <?= ($model->riwayat_pernah_dirawat == 'Tidak') ? 'checked' : '' ?>> Tidak
+                    <input type="checkbox" <?= ($data['riwayat_pernah_dirawat'] ?? '') == 'tidak' ? 'checked' : '' ?>> Tidak
                 </div>
                 <div class="checkbox-item">
-                    <input type="checkbox" <?= ($model->riwayat_pernah_dirawat == 'Ya') ? 'checked' : '' ?>> Ya
+                    <input type="checkbox" <?= ($data['riwayat_pernah_dirawat'] ?? '') == 'ya' ? 'checked' : '' ?>> Ya
                 </div>
-                <?php if ($model->riwayat_pernah_dirawat == 'Ya'): ?>
+                <?php if (($data['riwayat_pernah_dirawat'] ?? '') == 'ya'): ?>
+                    <?php $dirawatDetail = $data['dirawat_detail'] ?? []; ?>
                     <div style="margin-left: 20px;">
-                        Penyakit apa? : post app<br>
-                        Kapan? : 2017
+                        Penyakit apa? : <?= Html::encode($dirawatDetail['penyakit'] ?? 'post app') ?><br>
+                        Kapan? : <?= Html::encode($dirawatDetail['kapan'] ?? '2017') ?>
                     </div>
                 <?php endif; ?>
             </div>
@@ -402,78 +437,73 @@ body { font-family: Arial, sans-serif; font-size: 12px; }
                 </tr>
             </thead>
             <tbody>
-                <tr>
-                    <td>1</td>
-                    <td>Riwayat jatuh yang baru atau dalam 3 bulan terakhir</td>
-                    <td>Tidak = 0<br>Ya = 25</td>
-                    <td class="text-center">25</td>
-                </tr>
-                <tr>
-                    <td>2</td>
-                    <td>Diagnosa medis sekunder > 1</td>
-                    <td>Tidak = 0<br>Ya = 15</td>
-                    <td class="text-center">15</td>
-                </tr>
-                <tr>
-                    <td rowspan="3">3</td>
-                    <td>Mandiri, bedrest, dibantu perawat, kursi roda</td>
-                    <td>0</td>
-                    <td rowspan="3" class="text-center">0</td>
-                </tr>
-                <tr>
-                    <td>Penopang, tongkat/walker</td>
-                    <td>15</td>
-                </tr>
-                <tr>
-                    <td>Mencengkeram furniture/sesuatu untuk topangan</td>
-                    <td>15</td>
-                </tr>
-                <tr>
-                    <td>4</td>
-                    <td>Ad akses IV atau terapi heparin lock</td>
-                    <td>Tidak = 0<br>Ya = 20</td>
-                    <td class="text-center">20</td>
-                </tr>
-                <tr>
-                    <td rowspan="4">5</td>
-                    <td>Cara berjalan/berpindah: Lemah, langkah, diseret</td>
-                    <td>0</td>
-                    <td rowspan="4" class="text-center">0</td>
-                </tr>
-                <tr>
-                    <td>Terganggu, perlu bantuan, keseimbangan buruk</td>
-                    <td>10</td>
-                </tr>
-                <tr>
-                    <td>Orientasi sesuai kemampuan diri</td>
-                    <td>20</td>
-                </tr>
-                <tr>
-                    <td>Lupa keterbatasan diri</td>
-                    <td>15</td>
-                </tr>
-                <tr>
-                    <td>6</td>
-                    <td>Status mental:</td>
-                    <td>0</td>
-                    <td class="text-center">0</td>
-                </tr>
+                <?php
+                $resikoJatuh = $data['resiko_jatuh'] ?? [];
+                $totalResiko = 0;
+
+                // Default data jika tidak ada
+                if (empty($resikoJatuh)) {
+                    $resikoJatuh = [
+                        ['resiko' => 'Riwayat jatuh yang baru atau dalam 3 bulan terakhir', 'hasil' => 25],
+                        ['resiko' => 'Diagnosa medis sekunder > 1', 'hasil' => 15],
+                        ['resiko' => 'Alat bantu jalan', 'hasil' => 0],
+                        ['resiko' => 'Ad akses IV atau terapi heparin lock', 'hasil' => 20],
+                        ['resiko' => 'Cara berjalan/berpindah', 'hasil' => 0],
+                        ['resiko' => 'Status mental', 'hasil' => 0]
+                    ];
+                }
+
+                $skalaOptions = [
+                    1 => 'Tidak = 0<br>Ya = 25',
+                    2 => 'Tidak = 0<br>Ya = 15',
+                    3 => '0<br>15<br>15',
+                    4 => 'Tidak = 0<br>Ya = 20',
+                    5 => '0<br>10<br>20<br>0<br>15',
+                    6 => '0<br>15'
+                ];
+
+                foreach ($resikoJatuh as $index => $item):
+                    $no = $index + 1;
+                    $hasil = (int)($item['hasil'] ?? 0);
+                    $totalResiko += $hasil;
+                ?>
+                    <tr>
+                        <td><?= $no ?></td>
+                        <td><?= Html::encode($item['resiko'] ?? '') ?></td>
+                        <td><?= $skalaOptions[$no] ?? '' ?></td>
+                        <td class="text-center"><?= $hasil ?></td>
+                    </tr>
+                <?php endforeach; ?>
             </tbody>
             <tfoot>
                 <tr>
                     <td colspan="3" style="text-align: right;"><strong>Nilai total</strong></td>
-                    <td class="text-center"><strong><?= $model->getTotalResikoJatuh() ?: '60' ?></strong></td>
+                    <td class="text-center"><strong><?= $totalResiko ?></strong></td>
                 </tr>
             </tfoot>
         </table>
 
         <div style="margin-top: 10px;">
             <div style="padding: 10px; background-color: #f8f9fa; border: 1px solid #000;">
-                <strong>Kategori Resiko:</strong> <?= $model->getKategoriResikoJatuh() ?: 'Resiko tinggi' ?><br>
+                <?php
+                // Determine risk category
+                if ($totalResiko <= 24) {
+                    $kategoriResiko = 'Tidak berisiko (0-24)';
+                    $rekomendasi = 'Perawatan standar';
+                } elseif ($totalResiko <= 44) {
+                    $kategoriResiko = 'Resiko rendah (25-44)';
+                    $rekomendasi = 'Lakukan intervensi jatuh standar';
+                } else {
+                    $kategoriResiko = 'Resiko tinggi (≥45)';
+                    $rekomendasi = 'Lakukan intervensi jatuh risiko tinggi';
+                }
+                ?>
+                <strong>Kategori Resiko:</strong> <?= $kategoriResiko ?><br>
+                <strong>Rekomendasi:</strong> <?= $rekomendasi ?><br>
                 <small>
-                    <strong>Tidak beresiko: 0-24</strong> | Perawatan yang baik Resiko rendah: 25-44<br>
-                    <strong>Lakukan intervensi jatuh standar</strong> | Resiko tinggi: >=45<br>
-                    <strong>Lakukan intervensi jatuh risiko tinggi</strong>
+                    <strong>Tidak beresiko: 0-24</strong> | Perawatan yang baik<br>
+                    <strong>Resiko rendah: 25-44</strong> | Lakukan intervensi jatuh standar<br>
+                    <strong>Resiko tinggi: >=45</strong> | Lakukan intervensi jatuh risiko tinggi
                 </small>
             </div>
         </div>
@@ -481,6 +511,32 @@ body { font-family: Arial, sans-serif; font-size: 12px; }
 
     <!-- Footer -->
     <div style="margin-top: 30px; text-align: center; font-size: 10px;">
-        <p>Yii Framework - Tanggal cetak: <?= date('d/m/Y H:i:s') ?></p>
+        <p>Medical Form System - PT BIGS Integrasi Teknologi</p>
+        <p>Tanggal cetak: <?= date('d/m/Y H:i:s') ?></p>
+        <p>Form ID: FM<?= str_pad($model->id_form_data, 4, '0', STR_PAD_LEFT) ?></p>
     </div>
 </div>
+
+<?php
+// JavaScript untuk auto-print jika diperlukan
+$this->registerJs("
+// Auto focus untuk print dialog
+window.addEventListener('load', function() {
+    // Bisa ditambahkan auto print jika diperlukan
+    // window.print();
+});
+
+// Print function
+function printForm() {
+    window.print();
+}
+
+// Keyboard shortcut
+document.addEventListener('keydown', function(e) {
+    if (e.ctrlKey && e.key === 'p') {
+        e.preventDefault();
+        printForm();
+    }
+});
+");
+?>
