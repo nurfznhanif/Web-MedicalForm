@@ -1,7 +1,7 @@
 # Medical Form System
 
 > **Sistem Pengkajian Keperawatan Poliklinik Kebidanan**  
-> Developed by PT BIGS Integrasi Teknologi
+> Developed by Nurfauzan Hanif
 
 ## 📋 Deskripsi Project
 
