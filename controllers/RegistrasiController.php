@@ -8,7 +8,9 @@ use app\models\DataForm;
 use yii\data\ActiveDataProvider;
 use yii\web\Controller;
 use yii\web\NotFoundHttpException;
+use yii\web\ForbiddenHttpException;
 use yii\filters\VerbFilter;
+use yii\filters\AccessControl;
 use yii\web\Response;
 
 /**
@@ -22,6 +24,17 @@ class RegistrasiController extends Controller
     public function behaviors()
     {
         return [
+            // Access Control - Wajib login
+            'access' => [
+                'class' => AccessControl::class,
+                'rules' => [
+                    [
+                        'allow' => true,
+                        'roles' => ['@'], // Hanya user yang sudah login
+                    ],
+                ],
+            ],
+            // Verb Filter untuk keamanan
             'verbs' => [
                 'class' => VerbFilter::class,
                 'actions' => [
@@ -39,8 +52,13 @@ class RegistrasiController extends Controller
      */
     public function actionIndex()
     {
+        $query = Registrasi::find();
+
+        // HAPUS FILTER ADMIN - SEMUA USER BISA LIHAT SEMUA DATA
+        // Commented out: if (!Yii::$app->user->identity->isAdmin()) {
+
         $dataProvider = new ActiveDataProvider([
-            'query' => Registrasi::find(),
+            'query' => $query,
             'pagination' => [
                 'pageSize' => 20,
             ],
@@ -59,8 +77,13 @@ class RegistrasiController extends Controller
      */
     public function actionView($id)
     {
+        $model = $this->findModel($id);
+
+        // HAPUS CHECK PERMISSION
+        // $this->checkPermission($model);
+
         return $this->render('view', [
-            'model' => $this->findModel($id),
+            'model' => $model,
         ]);
     }
 
@@ -70,6 +93,7 @@ class RegistrasiController extends Controller
     public function actionCreate()
     {
         $model = new Registrasi();
+        $model->create_by = Yii::$app->user->id;
 
         if ($model->load(Yii::$app->request->post()) && $model->save()) {
             Yii::$app->session->setFlash('success', 'Data registrasi berhasil disimpan.');
@@ -87,6 +111,11 @@ class RegistrasiController extends Controller
     public function actionUpdate($id)
     {
         $model = $this->findModel($id);
+
+        // HAPUS CHECK PERMISSION
+        // $this->checkPermission($model);
+
+        $model->update_by = Yii::$app->user->id;
 
         if ($model->load(Yii::$app->request->post()) && $model->save()) {
             Yii::$app->session->setFlash('success', 'Data registrasi berhasil diupdate.');
@@ -106,9 +135,12 @@ class RegistrasiController extends Controller
         try {
             $model = $this->findModel($id);
 
+            // HAPUS CHECK PERMISSION
+            // $this->checkPermission($model);
+
             // Soft delete semua form terkait dulu
             DataForm::updateAll(
-                ['is_delete' => true, 'update_time_at' => new \yii\db\Expression('NOW()')],
+                ['is_delete' => true, 'update_time_at' => new \yii\db\Expression('NOW()'), 'update_by' => Yii::$app->user->id],
                 ['id_registrasi' => $id]
             );
 
@@ -118,6 +150,8 @@ class RegistrasiController extends Controller
             } else {
                 Yii::$app->session->setFlash('error', 'Gagal menghapus data registrasi.');
             }
+        } catch (ForbiddenHttpException $e) {
+            Yii::$app->session->setFlash('error', 'Anda tidak memiliki akses untuk menghapus data ini.');
         } catch (\Exception $e) {
             Yii::$app->session->setFlash('error', 'Error: ' . $e->getMessage());
         }
@@ -126,10 +160,13 @@ class RegistrasiController extends Controller
     }
 
     /**
-     * HARD DELETE - Hapus permanen registrasi
+     * HARD DELETE - Hapus permanen registrasi (SEMUA USER BISA)
      */
     public function actionHardDelete($id)
     {
+        // HAPUS CHECK ADMIN
+        // if (!Yii::$app->user->identity->isAdmin()) {
+
         try {
             $model = $this->findModel($id);
 
@@ -155,8 +192,13 @@ class RegistrasiController extends Controller
     public function actionInputForm($id_registrasi)
     {
         $registrasi = $this->findModel($id_registrasi);
+
+        // HAPUS CHECK PERMISSION
+        // $this->checkPermission($registrasi);
+
         $model = new DataForm();
         $model->id_registrasi = $id_registrasi;
+        $model->create_by = Yii::$app->user->id;
 
         if ($model->load(Yii::$app->request->post())) {
             // Process form data
@@ -183,6 +225,11 @@ class RegistrasiController extends Controller
     {
         $model = $this->findDataFormModel($id);
         $registrasi = $model->registrasi;
+
+        // HAPUS CHECK PERMISSION
+        // $this->checkDataFormPermission($model);
+
+        $model->update_by = Yii::$app->user->id;
 
         if ($model->load(Yii::$app->request->post())) {
             // Process form data
@@ -214,14 +261,20 @@ class RegistrasiController extends Controller
             $model = $this->findDataFormModel($id);
             $id_registrasi = $model->id_registrasi;
 
+            // HAPUS CHECK PERMISSION
+            // $this->checkDataFormPermission($model);
+
             $model->is_delete = true;
             $model->update_time_at = new \yii\db\Expression('NOW()');
+            $model->update_by = Yii::$app->user->id;
 
             if ($model->save(false)) {
                 Yii::$app->session->setFlash('success', 'Data form medis berhasil dihapus.');
             } else {
                 Yii::$app->session->setFlash('error', 'Gagal menghapus form medis.');
             }
+        } catch (ForbiddenHttpException $e) {
+            Yii::$app->session->setFlash('error', 'Anda tidak memiliki akses untuk menghapus form ini.');
         } catch (\Exception $e) {
             Yii::$app->session->setFlash('error', 'Error: ' . $e->getMessage());
         }
@@ -230,10 +283,13 @@ class RegistrasiController extends Controller
     }
 
     /**
-     * HARD DELETE - Hapus permanen form data medis
+     * HARD DELETE - Hapus permanen form data medis (SEMUA USER BISA)
      */
     public function actionHardDeleteForm($id)
     {
+        // HAPUS CHECK ADMIN
+        // if (!Yii::$app->user->identity->isAdmin()) {
+
         try {
             // Cari model tanpa filter is_delete karena mau hard delete
             $model = DataForm::findOne(['id_form_data' => $id]);
@@ -257,6 +313,12 @@ class RegistrasiController extends Controller
 
         return $this->redirect(['view', 'id' => $id_registrasi]);
     }
+
+    // HAPUS SEMUA METHOD CHECK PERMISSION
+    /*
+    protected function checkPermission($model) { ... }
+    protected function checkDataFormPermission($model) { ... }
+    */
 
     /**
      * Process form data before saving
@@ -333,6 +395,10 @@ class RegistrasiController extends Controller
     public function actionViewForm($id)
     {
         $model = $this->findDataFormModel($id);
+
+        // HAPUS CHECK PERMISSION
+        // $this->checkDataFormPermission($model);
+
         return $this->render('view-form', [
             'model' => $model,
         ]);
@@ -344,6 +410,9 @@ class RegistrasiController extends Controller
     public function actionPrintForm($id)
     {
         $model = $this->findDataFormModel($id);
+
+        // HAPUS CHECK PERMISSION
+        // $this->checkDataFormPermission($model);
 
         // Set layout khusus untuk print
         $this->layout = 'print';

@@ -1,53 +1,34 @@
 <?php
 
-/** @var yii\web\View $this */
+use yii\helpers\Html;
 
-$this->title = 'My Yii Application';
+$this->title = 'Dashboard';
 ?>
+
 <div class="site-index">
+    <div style="padding: 20px; background: #f8f9fa; border-radius: 10px; margin-bottom: 20px;">
+        <h1>Selamat Datang!</h1>
+        <p>Anda berhasil login ke Medical Form System</p>
+        <p><strong>User:</strong> <?= Html::encode(Yii::$app->user->identity->full_name) ?></p>
 
-    <div class="jumbotron text-center bg-transparent mt-5 mb-5">
-        <h1 class="display-4">Congratulations!</h1>
-
-        <p class="lead">You have successfully created your Yii-powered application.</p>
-
-        <p><a class="btn btn-lg btn-success" href="https://www.yiiframework.com">Get started with Yii</a></p>
+        <?= Html::beginForm(['/site/logout'], 'post', ['style' => 'display:inline']) ?>
+        <?= Html::submitButton('Logout', [
+            'class' => 'btn btn-danger',
+            'style' => 'padding: 10px 20px; background: #dc3545; color: white; border: none; border-radius: 5px; cursor: pointer;'
+        ]) ?>
+        <?= Html::endForm() ?>
     </div>
 
-    <div class="body-content">
+    <div style="padding: 20px; background: white; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1);">
+        <h2>Menu Utama</h2>
+        <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+            <?= Html::a('Data Registrasi', ['/registrasi/index'], [
+                'style' => 'display: inline-block; padding: 15px 25px; background: #007bff; color: white; text-decoration: none; border-radius: 5px;'
+            ]) ?>
 
-        <div class="row">
-            <div class="col-lg-4 mb-3">
-                <h2>Heading</h2>
-
-                <p>Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et
-                    dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip
-                    ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu
-                    fugiat nulla pariatur.</p>
-
-                <p><a class="btn btn-outline-secondary" href="https://www.yiiframework.com/doc/">Yii Documentation &raquo;</a></p>
-            </div>
-            <div class="col-lg-4 mb-3">
-                <h2>Heading</h2>
-
-                <p>Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et
-                    dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip
-                    ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu
-                    fugiat nulla pariatur.</p>
-
-                <p><a class="btn btn-outline-secondary" href="https://www.yiiframework.com/forum/">Yii Forum &raquo;</a></p>
-            </div>
-            <div class="col-lg-4">
-                <h2>Heading</h2>
-
-                <p>Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et
-                    dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip
-                    ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu
-                    fugiat nulla pariatur.</p>
-
-                <p><a class="btn btn-outline-secondary" href="https://www.yiiframework.com/extensions/">Yii Extensions &raquo;</a></p>
-            </div>
+            <?= Html::a('Tambah Registrasi', ['/registrasi/create'], [
+                'style' => 'display: inline-block; padding: 15px 25px; background: #28a745; color: white; text-decoration: none; border-radius: 5px;'
+            ]) ?>
         </div>
-
     </div>
 </div>
