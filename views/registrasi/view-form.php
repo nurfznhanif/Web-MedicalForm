@@ -750,7 +750,8 @@ $this->registerCss("
                     // Safe access to anthropometric data
                     $beratBadan = $data['antro_berat'] ?? $model->antro_berat ?? null;
                     $tinggiBadan = $data['antro_tinggi'] ?? $model->antro_tinggi ?? null;
-                    $lingkarBadan = $data['antro_lingkar'] ?? $model->antro_lingkar ?? null;
+                    $panjangBadan = $data['antro_panjang'] ?? $model->antro_panjang ?? null;
+                    $lingkarKepala = $data['antro_lingkar'] ?? $model->antro_lingkar ?? null;
                     $imt = $data['antro_imt'] ?? $model->antro_imt ?? null;
                     ?>
                     <div class="data-item">
@@ -762,8 +763,12 @@ $this->registerCss("
                         <div class="data-value"><?= $tinggiBadan ? $tinggiBadan . ' Cm' : '-' ?></div>
                     </div>
                     <div class="data-item">
-                        <div class="data-label">Lingkar Badan</div>
-                        <div class="data-value"><?= $lingkarBadan ? $lingkarBadan . ' Cm' : '-' ?></div>
+                        <div class="data-label">Panjang Badan</div>
+                        <div class="data-value"><?= $panjangBadan ? $panjangBadan . ' Cm' : '-' ?></div>
+                    </div>
+                    <div class="data-item">
+                        <div class="data-label">Lingkar Kepala</div>
+                        <div class="data-value"><?= $lingkarKepala ? $lingkarKepala . ' Cm' : '-' ?></div>
                     </div>
                     <div class="data-item">
                         <div class="data-label">IMT</div>

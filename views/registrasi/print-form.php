@@ -7,31 +7,17 @@ use yii\helpers\Html;
 
 $this->title = 'Print Form Pengkajian';
 
-/**
- * Helper class untuk data processing dengan error handling
- */
-class FormHelper
-{
+// Helper untuk mendapatkan data langsung dari model database
+$helper = new class($model) {
     private $model;
     private $registrasi;
-    private $data;
 
     public function __construct($model)
     {
         $this->model = $model;
         $this->registrasi = $model->registrasi ?? null;
-
-        try {
-            $this->data = $model->getDisplayData() ?? [];
-        } catch (Exception $e) {
-            Yii::error("Error getting display data: " . $e->getMessage());
-            $this->data = [];
-        }
     }
 
-    /**
-     * Safe get dengan fallback value
-     */
     private function safeGet($object, $key, $default = '')
     {
         if (is_array($object)) {
@@ -42,812 +28,846 @@ class FormHelper
         return $default;
     }
 
-    /**
-     * Format tanggal dengan safe handling
-     */
-    private function formatDate($date, $format = 'd F Y')
-    {
-        if (!$date) return '-';
-        try {
-            return date($format, strtotime($date));
-        } catch (Exception $e) {
-            return '-';
-        }
-    }
-
-    /**
-     * Get patient data dengan error handling
-     */
     public function getPatientData()
     {
         return [
-            'nama_pasien' => Html::encode($this->safeGet($this->registrasi, 'nama_pasien', 'NAMA PASIEN')),
-            'tanggal_lahir' => $this->formatDate($this->safeGet($this->registrasi, 'tanggal_lahir')),
-            'no_rekam_medis' => Html::encode($this->safeGet($this->registrasi, 'no_rekam_medis', 'RM-XXXX')),
-            'nik' => Html::encode($this->safeGet($this->registrasi, 'nik', '-')),
+            'nama_pasien' => Html::encode($this->registrasi->nama_pasien ?? 'NAMA PASIEN'),
+            'tanggal_lahir' => $this->registrasi->tanggal_lahir ?
+                date('d F Y', strtotime($this->registrasi->tanggal_lahir)) : '-',
+            'no_rekam_medis' => Html::encode($this->registrasi->no_rekam_medis ?? 'RM-XXXX'),
         ];
     }
 
-    /**
-     * Get form basic info
-     */
-    public function getFormInfo()
+    public function getFormData()
     {
         return [
-            'tanggal_pengkajian' => $this->safeGet($this->data, 'tanggal_pengkajian') ?:
-                $this->safeGet($this->model, 'tanggal_pengkajian', date('d/m/Y')),
-            'jam_pengkajian' => $this->safeGet($this->data, 'jam_pengkajian') ?:
-                $this->safeGet($this->model, 'jam_pengkajian', date('H:i')),
-            'poliklinik' => $this->safeGet($this->data, 'poliklinik') ?:
-                $this->safeGet($this->model, 'poliklinik', 'KLINIK OBGYN'),
+            // Data dasar
+            'tanggal_pengkajian' => $this->model->tanggal_pengkajian ?
+                date('d/m/Y', strtotime($this->model->tanggal_pengkajian)) : date('d/m/Y'),
+            'jam_pengkajian' => $this->model->jam_pengkajian ?? date('H:i'),
+            'poliklinik' => $this->model->poliklinik ?? 'KLINIK OBGYN',
+
+            // Pengkajian awal
+            'cara_masuk' => $this->model->cara_masuk,
+            'anamnesis' => $this->model->anamnesis,
+            'alergi' => Html::encode($this->model->alergi ?? 'Tidak ada alergi yang diketahui'),
+            'keluhan_utama' => Html::encode($this->model->keluhan_utama ?? 'Tidak ada keluhan khusus'),
+
+            // Pemeriksaan fisik
+            'keadaan_umum' => $this->model->keadaan_umum,
+            'warna_kulit' => $this->model->warna_kulit,
+            'kesadaran' => $this->model->kesadaran,
+
+            // Tanda vital
+            'td' => $this->model->tanda_vital_td ?? '120/80 mmHg',
+            'p' => $this->model->tanda_vital_p ?? '20 x/menit',
+            'n' => $this->model->tanda_vital_n ?? '80 x/menit',
+            's' => $this->model->tanda_vital_s ?? '36.5°C',
+
+            // Antropometri
+            'berat' => $this->model->antro_berat ?? '-',
+            'tinggi' => $this->model->antro_tinggi ?? '-',
+            'lingkar' => $this->model->antro_lingkar ?? '-',
+            'panjang' => $this->model->antro_panjang ?? '-',
+            'imt' => $this->model->antro_imt ?? '-',
+
+            // Fungsional
+            'alat_bantu' => $this->model->fungsi_alat_bantu ?? '-',
+            'prothesa' => $this->model->fungsi_prothesa ?? '-',
+            'cacat_tubuh' => $this->model->fungsi_cacat_tubuh ?? '-',
+            'adl' => $this->model->fungsi_adl ?? 'Mandiri',
+            'riwayat_jatuh_fungsional' => $this->model->riwayat_jatuh_fungsional ?? 'Negatif',
+
+            // Status gizi
+            'status_gizi' => $this->model->status_gizi,
+
+            // Riwayat penyakit
+            'riwayat_penyakit_sekarang' => $this->model->riwayat_penyakit_sekarang,
+            'riwayat_penyakit_sebelumnya' => $this->model->riwayat_penyakit_sebelumnya,
+            'riwayat_penyakit_keluarga' => $this->model->riwayat_penyakit_keluarga,
+
+            // Riwayat operasi
+            'riwayat_operasi' => $this->model->riwayat_operasi,
+            'operasi_apa' => $this->model->operasi_detail_apa ?? 'APP',
+            'operasi_kapan' => $this->model->operasi_detail_kapan ?? '2017',
+
+            // Riwayat rawat inap
+            'riwayat_pernah_dirawat' => $this->model->riwayat_pernah_dirawat,
+            'penyakit_apa' => $this->model->dirawat_detail_penyakit ?? 'Post operasi',
+            'dirawat_kapan' => $this->model->dirawat_detail_kapan ?? '2017',
         ];
     }
 
-    /**
-     * Get assessment data
-     */
-    public function getAssessmentData()
+    public function getRiskScores()
     {
-        return [
-            'cara_masuk' => $this->safeGet($this->data, 'cara_masuk') ?: $this->safeGet($this->model, 'cara_masuk'),
-            'anamnesis' => $this->safeGet($this->data, 'anamnesis') ?: $this->safeGet($this->model, 'anamnesis'),
-            'anamnesis_diperoleh' => Html::encode($this->safeGet($this->data, 'anamnesis_diperoleh', '_________________')),
-            'anamnesis_hubungan' => Html::encode($this->safeGet($this->data, 'anamnesis_hubungan', '_________________')),
-            'alergi' => Html::encode($this->safeGet($this->data, 'alergi') ?:
-                $this->safeGet($this->model, 'alergi', 'Tidak ada alergi yang diketahui')),
-            'keluhan_utama' => nl2br(Html::encode($this->safeGet($this->data, 'keluhan_utama') ?:
-                $this->safeGet($this->model, 'keluhan_utama', 'Tidak ada keluhan khusus'))),
-        ];
-    }
+        // Default scores jika tidak ada data
+        $defaultScores = [25, 15, 0, 20, 0, 0]; // Total = 60
 
-    /**
-     * Get physical exam data
-     */
-    public function getPhysicalExam()
-    {
-        return [
-            'keadaan_umum' => $this->safeGet($this->data, 'keadaan_umum') ?: $this->safeGet($this->model, 'keadaan_umum'),
-            'warna_kulit' => $this->safeGet($this->data, 'warna_kulit') ?: $this->safeGet($this->model, 'warna_kulit'),
-            'kesadaran' => $this->safeGet($this->data, 'kesadaran') ?: $this->safeGet($this->model, 'kesadaran'),
-            'status_gizi' => $this->safeGet($this->data, 'status_gizi') ?: $this->safeGet($this->model, 'status_gizi'),
-        ];
-    }
+        try {
+            // Ambil data dari model yang sudah di-load
+            $riskItems = $this->model->resiko_jatuh_items;
 
-    /**
-     * Get vital signs
-     */
-    public function getVitalSigns()
-    {
-        return [
-            'td' => Html::encode($this->safeGet($this->data, 'tanda_vital_td') ?:
-                $this->safeGet($this->model, 'tanda_vital_td', '120/80 mmHg')),
-            'p' => Html::encode($this->safeGet($this->data, 'tanda_vital_p') ?:
-                $this->safeGet($this->model, 'tanda_vital_p', '20 x/menit')),
-            'n' => Html::encode($this->safeGet($this->data, 'tanda_vital_n') ?:
-                $this->safeGet($this->model, 'tanda_vital_n', '80 x/menit')),
-            's' => Html::encode($this->safeGet($this->data, 'tanda_vital_s') ?:
-                $this->safeGet($this->model, 'tanda_vital_s', '36.5°C')),
-        ];
-    }
+            // Jika resiko_jatuh_items ada dan berisi data
+            if (!empty($riskItems) && is_array($riskItems)) {
+                $scores = [];
+                for ($i = 1; $i <= 6; $i++) {
+                    $key = 'risk' . $i;
+                    $scores[] = isset($riskItems[$key]) ? (int)$riskItems[$key] : 0;
+                }
+                return $scores;
+            }
 
-    /**
-     * Get antropometri data
-     */
-    public function getAntropometri()
-    {
-        return [
-            'berat' => $this->safeGet($this->data, 'antro_berat') ?: $this->safeGet($this->model, 'antro_berat', '-'),
-            'tinggi' => $this->safeGet($this->data, 'antro_tinggi') ?: $this->safeGet($this->model, 'antro_tinggi', '-'),
-            'lingkar' => $this->safeGet($this->data, 'antro_lingkar') ?: $this->safeGet($this->model, 'antro_lingkar', '-'),
-            'imt' => Html::encode($this->safeGet($this->data, 'antro_imt') ?: $this->safeGet($this->model, 'antro_imt', '-')),
-        ];
-    }
+            // Coba ambil dari data JSON langsung
+            $jsonData = $this->model->data;
+            if (!empty($jsonData)) {
+                $data = is_string($jsonData) ? json_decode($jsonData, true) : $jsonData;
 
-    /**
-     * Get functional data
-     */
-    public function getFunctionalData()
-    {
-        return [
-            'alat_bantu' => Html::encode($this->safeGet($this->data, 'fungsi_alat_bantu') ?:
-                $this->safeGet($this->model, 'fungsi_alat_bantu', '-')),
-            'prothesa' => Html::encode($this->safeGet($this->data, 'fungsi_prothesa') ?:
-                $this->safeGet($this->model, 'fungsi_prothesa', '-')),
-            'cacat_tubuh' => Html::encode($this->safeGet($this->data, 'fungsi_cacat_tubuh') ?:
-                $this->safeGet($this->model, 'fungsi_cacat_tubuh', '-')),
-            'adl' => Html::encode($this->safeGet($this->data, 'fungsi_adl') ?:
-                $this->safeGet($this->model, 'fungsi_adl', 'Mandiri')),
-            'riwayat_jatuh' => Html::encode($this->safeGet($this->data, 'riwayat_jatuh_fungsional') ?:
-                $this->safeGet($this->model, 'riwayat_jatuh_fungsional', 'Negatif')),
-        ];
-    }
+                if (is_array($data) && isset($data['resiko_jatuh']) && is_array($data['resiko_jatuh'])) {
+                    $scores = [];
+                    foreach ($data['resiko_jatuh'] as $item) {
+                        if (is_array($item) && isset($item['hasil'])) {
+                            $scores[] = (int)$item['hasil'];
+                        }
+                    }
 
-    /**
-     * Get medical history
-     */
-    public function getMedicalHistory()
-    {
-        return [
-            'penyakit_sekarang' => $this->safeGet($this->data, 'riwayat_penyakit_sekarang') ?:
-                $this->safeGet($this->model, 'riwayat_penyakit_sekarang'),
-            'penyakit_sebelum' => $this->safeGet($this->data, 'riwayat_penyakit_sebelumnya') ?:
-                $this->safeGet($this->model, 'riwayat_penyakit_sebelumnya'),
-            'penyakit_keluarga' => $this->safeGet($this->data, 'riwayat_penyakit_keluarga') ?:
-                $this->safeGet($this->model, 'riwayat_penyakit_keluarga'),
-            'riwayat_operasi' => $this->safeGet($this->data, 'riwayat_operasi') ?:
-                $this->safeGet($this->model, 'riwayat_operasi'),
-            'operasi_apa' => Html::encode($this->safeGet($this->data, 'operasi_apa', 'APP')),
-            'operasi_kapan' => Html::encode($this->safeGet($this->data, 'operasi_kapan', '2017')),
-            'riwayat_dirawat' => $this->safeGet($this->data, 'riwayat_pernah_dirawat') ?:
-                $this->safeGet($this->model, 'riwayat_pernah_dirawat'),
-            'penyakit_apa' => Html::encode($this->safeGet($this->data, 'penyakit_apa', 'Post operasi')),
-            'dirawat_kapan' => Html::encode($this->safeGet($this->data, 'dirawat_kapan', '2017')),
-        ];
-    }
+                    // Pastikan ada 6 nilai
+                    while (count($scores) < 6) {
+                        $scores[] = 0;
+                    }
 
-    /**
-     * Get risk assessment data
-     */
-    public function getRiskAssessment()
-    {
-        $riskScores = [25, 15, 0, 20, 0, 0]; // Default values
-
-        if (isset($this->data['resiko_jatuh_scores']) && is_array($this->data['resiko_jatuh_scores'])) {
-            $riskScores = $this->data['resiko_jatuh_scores'];
-        } elseif (isset($this->data['resiko_jatuh']) && is_array($this->data['resiko_jatuh'])) {
-            foreach ($this->data['resiko_jatuh'] as $index => $item) {
-                if (isset($item['hasil'])) {
-                    $riskScores[$index] = (int)$item['hasil'];
+                    return array_slice($scores, 0, 6);
                 }
             }
+
+            // Jika ada total_resiko_jatuh, coba distribusikan
+            $totalRisk = $this->model->total_resiko_jatuh;
+            if (!empty($totalRisk) && is_numeric($totalRisk)) {
+                $total = (int)$totalRisk;
+
+                // Jika total tidak sama dengan default (60), berarti ada data custom
+                if ($total != 60) {
+                    // Kembalikan nilai sesuai total yang tersimpan
+                    // Untuk sementara gunakan distribusi proporsional
+                    $ratio = $total / 60;
+                    return [
+                        (int)(25 * $ratio),
+                        (int)(15 * $ratio),
+                        (int)(0 * $ratio),
+                        (int)(20 * $ratio),
+                        (int)(0 * $ratio),
+                        (int)(0 * $ratio)
+                    ];
+                }
+            }
+        } catch (Exception $e) {
+            // Log error dan gunakan default
+            error_log("Error getting risk scores: " . $e->getMessage());
         }
 
-        return $riskScores;
+        // Return default jika semua cara gagal
+        return $defaultScores;
     }
 
-    /**
-     * Calculate risk category
-     */
-    public function getRiskCategory($totalScore)
+    public function getTotalRiskScore()
     {
-        if ($totalScore <= 24) {
-            return [
-                'kategori' => 'TIDAK BERISIKO (0-24)',
-                'rekomendasi' => 'Perawatan standar dan pemantauan rutin',
-                'warna' => '#059669',
-                'ikon' => '✅'
-            ];
-        } elseif ($totalScore <= 44) {
-            return [
-                'kategori' => 'RISIKO RENDAH (25-44)',
-                'rekomendasi' => 'Lakukan intervensi jatuh standar dan pemantauan berkala',
-                'warna' => '#f59e0b',
-                'ikon' => '⚠️'
-            ];
-        } else {
-            return [
-                'kategori' => 'RISIKO TINGGI (≥45)',
-                'rekomendasi' => 'Lakukan intervensi jatuh risiko tinggi dan pengawasan ketat',
-                'warna' => '#dc2626',
-                'ikon' => '🚨'
-            ];
+        try {
+            // Prioritas 1: Ambil dari total_resiko_jatuh model
+            if (!empty($this->model->total_resiko_jatuh) && is_numeric($this->model->total_resiko_jatuh)) {
+                return (int)$this->model->total_resiko_jatuh;
+            }
+
+            // Prioritas 2: Hitung dari getRiskScores()
+            $scores = $this->getRiskScores();
+            return array_sum($scores);
+        } catch (Exception $e) {
+            error_log("Error getting total risk score: " . $e->getMessage());
+            return 60; // Default total
         }
     }
+
+    public function getRiskCategory($total = null)
+    {
+        if ($total === null) {
+            $total = $this->getTotalRiskScore();
+        }
+
+        try {
+            // Prioritas 1: Ambil dari kategori_resiko_jatuh model
+            $modelCategory = $this->model->kategori_resiko_jatuh;
+            if (!empty($modelCategory) && is_string($modelCategory)) {
+                return $modelCategory;
+            }
+
+            // Prioritas 2: Hitung berdasarkan total
+            if ($total <= 24) {
+                return 'Tidak berisiko (0-24)';
+            } elseif ($total <= 44) {
+                return 'Resiko rendah (25-44)';
+            } else {
+                return 'Resiko tinggi (≥45)';
+            }
+        } catch (Exception $e) {
+            error_log("Error getting risk category: " . $e->getMessage());
+            return 'Resiko rendah (25-44)'; // Default category
+        }
+    }
+};
+
+$helper = new $helper($model);
+$patient = $helper->getPatientData();
+$formData = $helper->getFormData();
+$riskScores = $helper->getRiskScores();
+$totalRisk = (int)$helper->getTotalRiskScore(); // Cast to int
+$riskCategory = (string)$helper->getRiskCategory($totalRisk); // Cast to string
+
+// Validate arrays
+if (!is_array($riskScores)) {
+    $riskScores = [25, 15, 0, 20, 0, 0]; // Default fallback
 }
 
-// Inisialisasi helper
-$helper = new FormHelper($model);
-$patientData = $helper->getPatientData();
-$formInfo = $helper->getFormInfo();
-$assessmentData = $helper->getAssessmentData();
-$physicalExam = $helper->getPhysicalExam();
-$vitalSigns = $helper->getVitalSigns();
-$antropometri = $helper->getAntropometri();
-$functionalData = $helper->getFunctionalData();
-$medicalHistory = $helper->getMedicalHistory();
-$riskScores = $helper->getRiskAssessment();
+// Ensure we have exactly 6 scores
+while (count($riskScores) < 6) {
+    $riskScores[] = 0;
+}
+$riskScores = array_slice($riskScores, 0, 6);
 
-// Register CSS
+// Debug info (hapus di production)
+// echo "<!-- Debug Risk Data: " . print_r($riskScores, true) . " Total: " . $totalRisk . " -->";
+
+// CSS sesuai format asli
 $this->registerCss("
-@import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css');
-
 @media print {
     .no-print { display: none !important; }
-    body { 
-        font-size: 11px; 
-        line-height: 1.3; 
-        margin: 0;
-        padding: 15px;
-        font-family: 'Arial', sans-serif;
-        color: #000;
-        background: white;
-    }
-    .print-header { 
-        border-bottom: 3px solid #000; 
-        padding-bottom: 15px; 
-        margin-bottom: 20px; 
-        page-break-inside: avoid;
-    }
-    .form-section { 
-        margin-bottom: 20px; 
-        border: 2px solid #000; 
-        padding: 15px; 
-        page-break-inside: avoid;
-        border-radius: 5px;
-    }
-    .section-title { 
-        font-weight: bold; 
-        background-color: #f0f0f0; 
-        padding: 8px; 
-        margin: -15px -15px 15px -15px; 
-        border-bottom: 2px solid #000;
-        font-size: 12px;
-    }
-    .vital-grid, .antropometri-grid { 
-        display: grid; 
-        grid-template-columns: repeat(2, 1fr); 
-        gap: 10px; 
-        margin: 10px 0;
-    }
-    @page { size: A4; margin: 1.5cm 1cm; }
+    @page { size: A4; margin: 15mm; }
+    body { font-size: 10px; line-height: 1.2; }
 }
 
-/* Screen styles */
-body { 
-    font-family: 'Arial', sans-serif; 
-    font-size: 12px; 
-    line-height: 1.4; 
-    color: #000; 
-    background: white; 
-    margin: 0; 
-    padding: 20px; 
-    max-width: 210mm;
-    margin: 0 auto;
-    box-shadow: 0 0 20px rgba(0,0,0,0.1);
+body {
+    font-family: Arial, sans-serif;
+    font-size: 11px;
+    line-height: 1.3;
+    color: #000;
+    background: white;
+    margin: 0;
+    padding: 20px;
 }
 
-.print-preview { background: white; padding: 20px; min-height: 297mm; }
+.header-section {
+    border: 2px solid #000;
+    padding: 10px;
+    margin-bottom: 15px;
+}
 
-.print-header { 
-    display: flex; 
-    justify-content: space-between; 
+.header-row {
+    display: flex;
+    justify-content: space-between;
     align-items: center;
-    border-bottom: 3px solid #000; 
-    padding-bottom: 15px; 
-    margin-bottom: 25px; 
+    margin-bottom: 15px;
 }
 
-.logo-section { text-align: right; font-weight: bold; color: #2563eb; }
-
-.patient-info { 
-    background: #f8f9fa; 
-    border: 2px solid #000; 
-    padding: 15px; 
-    margin-bottom: 20px; 
-    border-radius: 5px;
+.logo-section {
+    text-align: right;
+    font-weight: bold;
+    font-size: 14px;
 }
 
-.form-section { 
-    border: 2px solid #000; 
-    padding: 15px; 
-    margin-bottom: 20px; 
-    border-radius: 5px;
-    background: #fdfdfd;
-}
+.pt-bigs { color: #FF6B35; }
+.integrasi { color: #4A90E2; }
+.teknologi { color: #7ED321; }
 
-.section-title { 
-    font-weight: bold; 
-    background: linear-gradient(135deg, #e5e7eb, #f3f4f6); 
-    padding: 10px; 
-    margin: -15px -15px 15px -15px; 
-    border-bottom: 2px solid #000;
-    border-radius: 3px 3px 0 0;
-    font-size: 13px;
-}
-
-.checkbox-group { display: flex; flex-wrap: wrap; gap: 15px; margin: 10px 0; }
-.checkbox-item { 
-    display: flex; 
-    align-items: center; 
-    gap: 8px; 
-    margin-bottom: 8px;
-    font-size: 12px;
-}
-
-.vital-grid, .antropometri-grid { 
-    display: grid; 
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); 
-    gap: 15px; 
+.title {
+    text-align: center;
+    font-weight: bold;
+    font-size: 14px;
     margin: 15px 0;
 }
 
-.vital-item, .antropometri-item {
-    background: #f8f9fa;
+.patient-box {
+    border: 2px solid #000;
     padding: 10px;
-    border-radius: 5px;
-    border: 1px solid #dee2e6;
-    text-align: center;
+    margin-bottom: 15px;
 }
 
-.resiko-table { 
-    width: 100%; 
-    border-collapse: collapse; 
-    margin-top: 15px; 
-    background: white;
+.form-info {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 15px;
+    padding: 5px 0;
 }
 
-.resiko-table th, .resiko-table td { 
-    border: 2px solid #000; 
-    padding: 10px; 
-    font-size: 11px; 
+.section {
+    border: 2px solid #000;
+    margin-bottom: 15px;
+    padding: 10px;
+}
+
+.section-title {
+    font-weight: bold;
+    margin-bottom: 10px;
+    padding-bottom: 5px;
+    border-bottom: 1px solid #000;
+}
+
+.checkbox-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin: 5px 0;
+}
+
+.checkbox-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.vital-signs {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin: 10px 0;
+}
+
+.antropometri {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin: 10px 0;
+}
+
+.two-column {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.three-column {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 15px;
+}
+
+.risk-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+
+.risk-table th,
+.risk-table td {
+    border: 1px solid #000;
+    padding: 8px;
+    text-align: left;
+    font-size: 10px;
     vertical-align: top;
 }
 
-.resiko-table th { 
-    background: linear-gradient(135deg, #e5e7eb, #f3f4f6); 
-    font-weight: bold; 
+.risk-table th {
+    background-color: #f0f0f0;
+    font-weight: bold;
     text-align: center;
 }
 
-/* Utility classes */
 .text-center { text-align: center; }
 .text-right { text-align: right; }
-.flex-between { display: flex; justify-content: space-between; align-items: center; }
-.mb-2 { margin-bottom: 15px; }
-.row { display: flex; flex-wrap: wrap; gap: 10px; }
-.col-6 { width: calc(50% - 5px); }
-.col-4 { width: calc(33.33% - 7px); }
-.col-3 { width: calc(25% - 8px); }
+.bold { font-weight: bold; }
 
-.risk-category-display {
-    background: #f0f9ff;
-    border: 2px solid #0369a1;
-    padding: 15px;
-    margin-top: 15px;
-    border-radius: 8px;
+.petugas-box {
+    border: 2px solid #000;
+    padding: 10px;
+    text-align: center;
+    background-color: #f9f9f9;
 }
 
-.no-print-controls {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    z-index: 1000;
-    display: flex;
-    gap: 10px;
+.checkbox-input {
+    width: 12px;
+    height: 12px;
+    margin-right: 5px;
 }
 
-.btn-modern {
-    padding: 12px 20px;
-    border-radius: 8px;
-    font-weight: 600;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    transition: all 0.3s ease;
-    border: none;
-    cursor: pointer;
-    font-size: 14px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+.risk-result {
+    background-color: #f0f0f0;
+    padding: 10px;
+    margin-top: 10px;
+    border: 1px solid #000;
 }
 
-.btn-primary { background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; }
-.btn-secondary { background: linear-gradient(135deg, #6b7280, #4b5563); color: white; }
-
-@media (max-width: 768px) {
-    body { padding: 10px; font-size: 11px; }
-    .row { flex-direction: column; }
-    .col-6, .col-4, .col-3 { width: 100%; }
+.debug-info {
+    background: #ffffcc;
+    border: 1px solid #ffcc00;
+    padding: 10px;
+    margin: 10px 0;
+    font-size: 9px;
 }
 ");
 ?>
 
 <!-- Print Controls -->
-<div class="no-print no-print-controls">
+<div class="no-print" style="margin-bottom: 20px; text-align: center;">
     <?= Html::button('<i class="fas fa-print"></i> Print', [
         'onclick' => 'window.print()',
-        'class' => 'btn-modern btn-primary'
+        'class' => 'btn btn-primary',
+        'style' => 'margin-right: 10px; padding: 10px 20px;'
     ]) ?>
     <?= Html::a('<i class="fas fa-arrow-left"></i> Kembali', ['view-form', 'id' => $model->id_form_data], [
-        'class' => 'btn-modern btn-secondary'
+        'class' => 'btn btn-secondary',
+        'style' => 'padding: 10px 20px;'
     ]) ?>
 </div>
 
-<div class="print-preview">
+<!-- Content -->
+<div class="print-content">
     <!-- Header -->
-    <div class="print-header">
-        <div>
-            <h2 style="margin: 0; font-size: 18px; font-weight: bold;">LAMPIRAN 1</h2>
-            <p style="margin: 5px 0 0 0; font-size: 12px; color: #666;">Form Pengkajian Medis</p>
-        </div>
-        <div class="logo-section">
-            <div style="font-size: 16px; line-height: 1.2;">
-                <strong style="color: #dc2626;">PT BIGS</strong><br>
-                <strong style="color: #2563eb;">INTEGRASI</strong><br>
-                <strong style="color: #059669;">TEKNOLOGI</strong>
+    <div class="header-section">
+        <div class="header-row">
+            <div>
+                <div class="bold" style="font-size: 16px;">LAMPIRAN 1</div>
             </div>
-            <div style="font-size: 10px; margin-top: 5px; color: #666;">Medical Form System</div>
+            <div class="logo-section">
+                <div class="pt-bigs">PT BIGS</div>
+                <div class="integrasi">INTEGRASI</div>
+                <div class="teknologi">TEKNOLOGI</div>
+            </div>
+        </div>
+
+        <div style="text-align: right; font-size: 10px;">
+            <div>Nama Lengkap: <strong><?= $patient['nama_pasien'] ?></strong></div>
+            <div>Tanggal Lahir: <strong><?= $patient['tanggal_lahir'] ?></strong></div>
+            <div>No. RM: <strong><?= $patient['no_rekam_medis'] ?></strong></div>
         </div>
     </div>
 
     <!-- Title -->
-    <div class="text-center mb-2">
-        <h1 style="margin: 0; font-size: 20px; font-weight: bold; color: #1e40af;">PENGKAJIAN KEPERAWATAN</h1>
-        <div style="margin-top: 10px; font-size: 11px; color: #666;">
-            ID Form: FM<?= str_pad($model->id_form_data, 4, '0', STR_PAD_LEFT) ?> |
-            Tanggal Cetak: <?= date('d/m/Y H:i:s') ?>
-        </div>
+    <div class="title">
+        <div style="font-size: 16px; margin-bottom: 5px;"><strong>PENGKAJIAN KEPERAWATAN</strong></div>
+        <div style="font-size: 16px;"><strong>POLIKLINIK KEBIDANAN</strong></div>
     </div>
 
-    <!-- Patient Info -->
-    <div class="patient-info">
-        <div class="row">
-            <div class="col-6">
-                <div style="font-weight: bold; margin-bottom: 8px;">
-                    👤 Nama Lengkap: <?= $patientData['nama_pasien'] ?>
-                </div>
-                <div style="margin-bottom: 8px;">📅 Tanggal Lahir: <?= $patientData['tanggal_lahir'] ?></div>
-                <div style="margin-bottom: 8px;">📋 No. RM: <?= $patientData['no_rekam_medis'] ?></div>
-                <div>🆔 NIK: <?= $patientData['nik'] ?></div>
-            </div>
-            <div class="col-6 text-right">
-                <div style="border: 2px solid #000; padding: 15px; display: inline-block; border-radius: 8px; background: #f9f9f9;">
-                    <div style="font-weight: bold; margin-bottom: 10px; color: #1e40af;">PETUGAS MEDIS</div>
-                    <div style="margin-bottom: 8px;">📅 Tanggal/Pukul: <?= date('d/m/Y H:i') ?></div>
-                    <div style="margin-bottom: 15px;">👨‍⚕️ Nama Lengkap: _________________</div>
-                    <div>✍️ Tanda Tangan: _________________</div>
-                </div>
-            </div>
-        </div>
-    </div>
+    
 
     <!-- Form Basic Info -->
-    <div class="form-section">
-        <div class="flex-between mb-2">
-            <div><strong>📅 Tanggal Pengkajian:</strong> <?= $formInfo['tanggal_pengkajian'] ?></div>
-            <div><strong>⏰ Jam Pengkajian:</strong> <?= $formInfo['jam_pengkajian'] ?></div>
-            <div><strong>🏥 Poliklinik:</strong> <?= $formInfo['poliklinik'] ?></div>
+    <div class="form-info">
+        <div><strong>Poliklinik: <?= $formData['poliklinik'] ?></strong></div>
+    </div>
+
+    <!-- Section 1: Pengkajian saat datang -->
+    <div class="section">
+        <div class="section-title">Pengkajian saat datang (diisi oleh perawat)</div>
+
+        <div class="two-column">
+            <div>
+                <div class="bold">1. Cara masuk:</div>
+                <div class="checkbox-row">
+                    <div class="checkbox-item">
+                        <input type="checkbox" class="checkbox-input" <?= $formData['cara_masuk'] == 'jalan_tanpa_bantuan' ? 'checked' : '' ?> readonly>
+                        <span>Jalan tanpa bantuan</span>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" class="checkbox-input" <?= $formData['cara_masuk'] == 'kursi_tanpa_bantuan' ? 'checked' : '' ?> readonly>
+                        <span>Kursi tanpa bantuan</span>
+                    </div>
+                </div>
+                <div class="checkbox-row">
+                    <div class="checkbox-item">
+                        <input type="checkbox" class="checkbox-input" <?= $formData['cara_masuk'] == 'tempat_tidur_dorong' ? 'checked' : '' ?> readonly>
+                        <span>Tempat tidur dorong</span>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" class="checkbox-input" <?= $formData['cara_masuk'] == 'lain_lain' ? 'checked' : '' ?> readonly>
+                        <span>Lain-lain</span>
+                    </div>
+                </div>
+            </div>
+            <div>
+                <div class="bold">2. Anamnesis:</div>
+                <div class="checkbox-row">
+                    <div class="checkbox-item">
+                        <input type="checkbox" class="checkbox-input" <?= $formData['anamnesis'] == 'autoanamnesis' ? 'checked' : '' ?> readonly>
+                        <span>Autoanamnesis</span>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" class="checkbox-input" <?= $formData['anamnesis'] == 'aloanamnesis' ? 'checked' : '' ?> readonly>
+                        <span>Aloanamnesis</span>
+                    </div>
+                </div>
+                <div style="margin-top: 10px;">
+                    <span>Diperoleh: ________________ Hubungan: ________________</span>
+                </div>
+            </div>
+        </div>
+
+        <div style="margin-top: 15px;">
+            <div><strong>Alergi:</strong> <?= $formData['alergi'] ?></div>
+        </div>
+
+        <div style="margin-top: 10px;">
+            <div class="bold">3. Keluhan utama saat ini:</div>
+            <div style="margin-top: 5px;"><?= $formData['keluhan_utama'] ?></div>
         </div>
     </div>
 
-    <!-- Assessment Section -->
-    <div class="form-section">
-        <div class="section-title">📋 Pengkajian saat datang</div>
+    <!-- Section 2: Pemeriksaan Fisik -->
+    <div class="section">
+        <div class="section-title">4. Pemeriksaan fisik:</div>
 
-        <div class="row mb-2">
-            <div class="col-6">
-                <strong>1. Cara masuk:</strong><br>
-                <div class="checkbox-group">
-                    <?php
-                    $caraMasukOptions = [
-                        'jalan_tanpa_bantuan' => 'Jalan tanpa bantuan',
-                        'kursi_tanpa_bantuan' => 'Kursi tanpa bantuan',
-                        'tempat_tidur_dorong' => 'Tempat tidur dorong',
-                        'lain_lain' => 'Lain-lain'
-                    ];
-                    foreach ($caraMasukOptions as $value => $label): ?>
-                        <div class="checkbox-item">
-                            <input type="checkbox" <?= $assessmentData['cara_masuk'] == $value ? 'checked' : '' ?> readonly> <?= $label ?>
-                        </div>
-                    <?php endforeach; ?>
+        <div class="three-column">
+            <div>
+                <div class="bold">a. Keadaan umum:</div>
+                <div class="checkbox-item">
+                    <input type="checkbox" class="checkbox-input" <?= $formData['keadaan_umum'] == 'tidak_tampak_sakit' ? 'checked' : '' ?> readonly>
+                    <span>Tidak tampak sakit</span>
+                </div>
+                <div class="checkbox-item">
+                    <input type="checkbox" class="checkbox-input" <?= $formData['keadaan_umum'] == 'sakit_ringan' ? 'checked' : '' ?> readonly>
+                    <span>Sakit ringan</span>
+                </div>
+                <div class="checkbox-item">
+                    <input type="checkbox" class="checkbox-input" <?= $formData['keadaan_umum'] == 'sedang' ? 'checked' : '' ?> readonly>
+                    <span>Sedang</span>
+                </div>
+                <div class="checkbox-item">
+                    <input type="checkbox" class="checkbox-input" <?= $formData['keadaan_umum'] == 'berat' ? 'checked' : '' ?> readonly>
+                    <span>Berat</span>
                 </div>
             </div>
-            <div class="col-6">
-                <strong>2. Anamnesis:</strong><br>
-                <div class="checkbox-group">
-                    <?php
-                    $anamnesisOptions = ['autoanamnesis' => 'Autoanamnesis', 'aloanamnesis' => 'Aloanamnesis'];
-                    foreach ($anamnesisOptions as $value => $label): ?>
-                        <div class="checkbox-item">
-                            <input type="checkbox" <?= $assessmentData['anamnesis'] == $value ? 'checked' : '' ?> readonly> <?= $label ?>
-                        </div>
-                    <?php endforeach; ?>
+            <div>
+                <div class="bold">b. Warna kulit:</div>
+                <div class="checkbox-item">
+                    <input type="checkbox" class="checkbox-input" <?= $formData['warna_kulit'] == 'normal' ? 'checked' : '' ?> readonly>
+                    <span>Normal</span>
                 </div>
-                <div style="margin-top: 10px; background: #f8f9fa; padding: 8px; border-radius: 5px;">
-                    Diperoleh dari: <u><?= $assessmentData['anamnesis_diperoleh'] ?></u><br>
-                    Hubungan: <u><?= $assessmentData['anamnesis_hubungan'] ?></u>
+                <div class="checkbox-item">
+                    <input type="checkbox" class="checkbox-input" <?= $formData['warna_kulit'] == 'sianosis' ? 'checked' : '' ?> readonly>
+                    <span>Sianosis</span>
+                </div>
+                <div class="checkbox-item">
+                    <input type="checkbox" class="checkbox-input" <?= $formData['warna_kulit'] == 'pucat' ? 'checked' : '' ?> readonly>
+                    <span>Pucat</span>
+                </div>
+                <div class="checkbox-item">
+                    <input type="checkbox" class="checkbox-input" <?= $formData['warna_kulit'] == 'kemerahan' ? 'checked' : '' ?> readonly>
+                    <span>Kemerahan</span>
+                </div>
+            </div>
+            <div>
+                <div class="bold">Kesadaran:</div>
+                <div class="checkbox-item">
+                    <input type="checkbox" class="checkbox-input" <?= $formData['kesadaran'] == 'compos_mentis' ? 'checked' : '' ?> readonly>
+                    <span>Compos mentis</span>
+                </div>
+                <div class="checkbox-item">
+                    <input type="checkbox" class="checkbox-input" <?= $formData['kesadaran'] == 'apatis' ? 'checked' : '' ?> readonly>
+                    <span>Apatis</span>
+                </div>
+                <div class="checkbox-item">
+                    <input type="checkbox" class="checkbox-input" <?= $formData['kesadaran'] == 'somnolent' ? 'checked' : '' ?> readonly>
+                    <span>Somnolent</span>
+                </div>
+                <div class="checkbox-item">
+                    <input type="checkbox" class="checkbox-input" <?= $formData['kesadaran'] == 'sopor' ? 'checked' : '' ?> readonly>
+                    <span>Sopor</span>
+                </div>
+                <div class="checkbox-item">
+                    <input type="checkbox" class="checkbox-input" <?= $formData['kesadaran'] == 'soporokoma' ? 'checked' : '' ?> readonly>
+                    <span>Soporokoma</span>
+                </div>
+                <div class="checkbox-item">
+                    <input type="checkbox" class="checkbox-input" <?= $formData['kesadaran'] == 'koma' ? 'checked' : '' ?> readonly>
+                    <span>Koma</span>
                 </div>
             </div>
         </div>
 
-        <div class="mb-2">
-            <strong>⚠️ Alergi:</strong>
-            <div style="background: #fef3c7; padding: 10px; border-radius: 5px; margin-top: 5px; border: 1px solid #f59e0b;">
-                <?= $assessmentData['alergi'] ?>
+        <!-- Tanda Vital -->
+        <div style="margin-top: 15px;">
+            <div class="bold">Tanda vital:</div>
+            <div class="vital-signs">
+                <div>TD: <?= $formData['td'] ?></div>
+                <div>P: <?= $formData['p'] ?></div>
+                <div>N: <?= $formData['n'] ?></div>
+                <div>S: <?= $formData['s'] ?></div>
             </div>
         </div>
 
-        <div class="mb-2">
-            <strong>3. Keluhan utama saat ini:</strong><br>
-            <div style="background: #f0f9ff; padding: 10px; border-radius: 5px; margin-top: 5px; border: 1px solid #0369a1;">
-                <?= $assessmentData['keluhan_utama'] ?>
-            </div>
-        </div>
-    </div>
-
-    <!-- Physical Exam -->
-    <div class="form-section">
-        <div class="section-title">🔍 Pemeriksaan Fisik</div>
-
-        <div class="row mb-2">
-            <div class="col-4">
-                <strong>a. Keadaan umum:</strong><br>
-                <?php
-                $keadaanOptions = [
-                    'tidak_tampak_sakit' => 'Tidak tampak sakit',
-                    'sakit_ringan' => 'Sakit ringan',
-                    'sedang' => 'Sedang',
-                    'berat' => 'Berat'
-                ];
-                foreach ($keadaanOptions as $value => $label): ?>
-                    <div class="checkbox-item">
-                        <input type="checkbox" <?= $physicalExam['keadaan_umum'] == $value ? 'checked' : '' ?> readonly> <?= $label ?>
-                    </div>
-                <?php endforeach; ?>
-            </div>
-            <div class="col-4">
-                <strong>b. Warna kulit:</strong><br>
-                <?php
-                $warnaOptions = ['normal' => 'Normal', 'sianosis' => 'Sianosis', 'pucat' => 'Pucat', 'kemerahan' => 'Kemerahan'];
-                foreach ($warnaOptions as $value => $label): ?>
-                    <div class="checkbox-item">
-                        <input type="checkbox" <?= $physicalExam['warna_kulit'] == $value ? 'checked' : '' ?> readonly> <?= $label ?>
-                    </div>
-                <?php endforeach; ?>
-            </div>
-            <div class="col-4">
-                <strong>c. Kesadaran:</strong><br>
-                <?php
-                $kesadaranOptions = [
-                    'compos_mentis' => 'Compos mentis',
-                    'apatis' => 'Apatis',
-                    'somnolent' => 'Somnolent',
-                    'sopor' => 'Sopor',
-                    'soporokoma' => 'Soporokoma',
-                    'koma' => 'Koma'
-                ];
-                foreach ($kesadaranOptions as $value => $label): ?>
-                    <div class="checkbox-item">
-                        <input type="checkbox" <?= $physicalExam['kesadaran'] == $value ? 'checked' : '' ?> readonly> <?= $label ?>
-                    </div>
-                <?php endforeach; ?>
-            </div>
-        </div>
-
-        <!-- Vital Signs -->
-        <div class="mb-2">
-            <strong>💓 Tanda Vital:</strong>
-            <div class="vital-grid">
-                <div class="vital-item"><strong>TD:</strong> <?= $vitalSigns['td'] ?></div>
-                <div class="vital-item"><strong>P:</strong> <?= $vitalSigns['p'] ?></div>
-                <div class="vital-item"><strong>N:</strong> <?= $vitalSigns['n'] ?></div>
-                <div class="vital-item"><strong>S:</strong> <?= $vitalSigns['s'] ?></div>
-            </div>
-        </div>
-
-        <!-- Functional & Antropometri -->
-        <div class="row mb-2">
-            <div class="col-6">
-                <strong>🏃‍♂️ Fungsional:</strong><br>
-                <div style="background: #f8f9fa; padding: 10px; border-radius: 5px; font-size: 11px;">
-                    1. Alat bantu: <?= $functionalData['alat_bantu'] ?><br>
-                    2. Prothesa: <?= $functionalData['prothesa'] ?><br>
-                    3. Cacat tubuh: <?= $functionalData['cacat_tubuh'] ?><br>
-                    4. ADL: <?= $functionalData['adl'] ?><br>
-                    5. Riwayat jatuh: <?= $functionalData['riwayat_jatuh'] ?>
+        <!-- Fungsional & Antropometri -->
+        <div class="two-column" style="margin-top: 15px;">
+            <div>
+                <div class="bold">Fungsional:</div>
+                <div>1. Alat bantu: <?= $formData['alat_bantu'] ?></div>
+                <div>2. Prothesa: <?= $formData['prothesa'] ?></div>
+                <div>3. Cacat tubuh: <?= $formData['cacat_tubuh'] ?></div>
+                <div>4. ADL:
+                    <input type="checkbox" class="checkbox-input" <?= $formData['adl'] == 'mandiri' ? 'checked' : '' ?> readonly> Mandiri
+                    <input type="checkbox" class="checkbox-input" <?= $formData['adl'] == 'dibantu' ? 'checked' : '' ?> readonly> Dibantu
+                </div>
+                <div>5. Riwayat jatuh:
+                    <input type="checkbox" class="checkbox-input" <?= $formData['riwayat_jatuh_fungsional'] == 'positif' ? 'checked' : '' ?> readonly> + (Ada riwayat)
+                    <input type="checkbox" class="checkbox-input" <?= $formData['riwayat_jatuh_fungsional'] == 'negatif' ? 'checked' : '' ?> readonly> - (Tidak ada riwayat)
                 </div>
             </div>
-            <div class="col-6">
-                <strong>⚖️ Antropometri:</strong><br>
-                <div class="antropometri-grid">
-                    <div class="antropometri-item">
-                        <strong>Berat:</strong><br><?= $antropometri['berat'] ? $antropometri['berat'] . ' Kg' : '-' ?>
-                    </div>
-                    <div class="antropometri-item">
-                        <strong>Tinggi:</strong><br><?= $antropometri['tinggi'] ? $antropometri['tinggi'] . ' Cm' : '-' ?>
-                    </div>
-                    <div class="antropometri-item">
-                        <strong>Lingkar:</strong><br><?= $antropometri['lingkar'] ? $antropometri['lingkar'] . ' Cm' : '-' ?>
-                    </div>
-                    <div class="antropometri-item">
-                        <strong>IMT:</strong><br><?= $antropometri['imt'] ?>
-                    </div>
+            <div>
+                <div class="bold">Antropometri:</div>
+                <div class="antropometri">
+                    <div>Berat: <?= $formData['berat'] != '-' ? $formData['berat'] . ' Kg' : '_____ Kg' ?></div>
+                    <div>Tinggi badan: <?= $formData['tinggi'] != '-' ? $formData['tinggi'] . ' Cm' : '_____ Cm' ?></div>
+                    <div>Panjang badan (PB): <?= $formData['panjang'] != '-' ? $formData['panjang'] . ' Cm' : '_____ Cm' ?></div>
+                    <div>Lingkar kepala (LK): <?= $formData['lingkar'] != '-' ? $formData['lingkar'] . ' Cm' : '_____ Cm' ?></div>
+                    <div>IMT: <?= $formData['imt'] != '-' ? $formData['imt'] : '_____' ?></div>
                 </div>
-                <div style="margin-top: 8px; font-size: 10px; color: #666;">
+                <div style="font-size: 9px; margin-top: 5px;">
                     <strong>Catatan:</strong> PB & LK Khusus Pediatri
                 </div>
             </div>
         </div>
 
         <!-- Status Gizi -->
-        <div class="mb-2">
-            <strong>🍎 Status Gizi:</strong>
-            <div class="checkbox-group">
-                <?php
-                $giziOptions = ['ideal' => 'Ideal', 'kurang' => 'Kurang', 'obesitas' => 'Obesitas / Overweight'];
-                foreach ($giziOptions as $value => $label): ?>
-                    <div class="checkbox-item">
-                        <input type="checkbox" <?= $physicalExam['status_gizi'] == $value ? 'checked' : '' ?> readonly> <?= $label ?>
-                    </div>
-                <?php endforeach; ?>
+        <div style="margin-top: 15px;">
+            <div class="bold">c. Status gizi:</div>
+            <div class="checkbox-row">
+                <div class="checkbox-item">
+                    <input type="checkbox" class="checkbox-input" <?= $formData['status_gizi'] == 'ideal' ? 'checked' : '' ?> readonly>
+                    <span>Ideal</span>
+                </div>
+                <div class="checkbox-item">
+                    <input type="checkbox" class="checkbox-input" <?= $formData['status_gizi'] == 'kurang' ? 'checked' : '' ?> readonly>
+                    <span>Kurang</span>
+                </div>
+                <div class="checkbox-item">
+                    <input type="checkbox" class="checkbox-input" <?= $formData['status_gizi'] == 'obesitas' ? 'checked' : '' ?> readonly>
+                    <span>Obesitas / overweight</span>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- Medical History -->
-    <div class="form-section">
-        <div class="section-title">📚 Riwayat Penyakit dan Operasi</div>
-
-        <div class="row mb-2">
-            <div class="col-4">
-                <strong>5. Riwayat penyakit sekarang:</strong><br>
-                <?php
-                $penyakitOptions = ['dm' => 'DM', 'hipertensi' => 'Hipertensi', 'jantung' => 'Jantung', 'tidak_ada' => 'Tidak Ada'];
-                foreach ($penyakitOptions as $value => $label): ?>
-                    <div class="checkbox-item">
-                        <input type="checkbox" <?= $medicalHistory['penyakit_sekarang'] == $value ? 'checked' : '' ?> readonly> <?= $label ?>
-                    </div>
-                <?php endforeach; ?>
-            </div>
-            <div class="col-4">
-                <strong>6. Riwayat penyakit sebelumnya:</strong><br>
+    <!-- Section 3: Riwayat Penyakit -->
+    <div class="section">
+        <div class="three-column">
+            <div>
+                <div class="bold">5. Riwayat penyakit sekarang:</div>
                 <div class="checkbox-item">
-                    <input type="checkbox" <?= $medicalHistory['penyakit_sebelum'] == 'tidak' ? 'checked' : '' ?> readonly> Tidak
+                    <input type="checkbox" class="checkbox-input" <?= $formData['riwayat_penyakit_sekarang'] == 'dm' ? 'checked' : '' ?> readonly>
+                    <span>DM</span>
                 </div>
                 <div class="checkbox-item">
-                    <input type="checkbox" <?= $medicalHistory['penyakit_sebelum'] == 'ya' ? 'checked' : '' ?> readonly> Ya
+                    <input type="checkbox" class="checkbox-input" <?= $formData['riwayat_penyakit_sekarang'] == 'hipertensi' ? 'checked' : '' ?> readonly>
+                    <span>Hipertensi</span>
+                </div>
+                <div class="checkbox-item">
+                    <input type="checkbox" class="checkbox-input" <?= $formData['riwayat_penyakit_sekarang'] == 'jantung' ? 'checked' : '' ?> readonly>
+                    <span>Jantung</span>
+                </div>
+                <div class="checkbox-item">
+                    <input type="checkbox" class="checkbox-input" <?= $formData['riwayat_penyakit_sekarang'] == 'lain_lain' ? 'checked' : '' ?> readonly>
+                    <span>Lain-lain</span>
                 </div>
             </div>
-            <div class="col-4">
-                <strong>7. Riwayat penyakit keluarga:</strong><br>
+            <div>
+                <div class="bold">6. Riwayat penyakit sebelumnya:</div>
                 <div class="checkbox-item">
-                    <input type="checkbox" <?= $medicalHistory['penyakit_keluarga'] == 'tidak' ? 'checked' : '' ?> readonly> Tidak
+                    <input type="checkbox" class="checkbox-input" <?= $formData['riwayat_penyakit_sebelumnya'] == 'tidak' ? 'checked' : '' ?> readonly>
+                    <span>Tidak</span>
                 </div>
                 <div class="checkbox-item">
-                    <input type="checkbox" <?= $medicalHistory['penyakit_keluarga'] == 'ya' ? 'checked' : '' ?> readonly> Ya
+                    <input type="checkbox" class="checkbox-input" <?= $formData['riwayat_penyakit_sebelumnya'] == 'ya' ? 'checked' : '' ?> readonly>
+                    <span>Ya</span>
+                </div>
+            </div>
+            <div>
+                <div class="bold">7. Riwayat penyakit keluarga:</div>
+                <div class="checkbox-item">
+                    <input type="checkbox" class="checkbox-input" <?= $formData['riwayat_penyakit_keluarga'] == 'tidak' ? 'checked' : '' ?> readonly>
+                    <span>Tidak</span>
+                </div>
+                <div class="checkbox-item">
+                    <input type="checkbox" class="checkbox-input" <?= $formData['riwayat_penyakit_keluarga'] == 'ya' ? 'checked' : '' ?> readonly>
+                    <span>Ya</span>
                 </div>
             </div>
         </div>
+    </div>
 
-        <div class="row">
-            <div class="col-6">
-                <strong>9. Riwayat operasi:</strong>
-                <div class="checkbox-item">
-                    <input type="checkbox" <?= $medicalHistory['riwayat_operasi'] == 'tidak' ? 'checked' : '' ?> readonly> Tidak
+    <!-- Section 4: Riwayat Operasi -->
+    <div class="section">
+        <div class="two-column">
+            <div>
+                <div class="bold">8. Riwayat operasi:</div>
+                <div class="checkbox-row">
+                    <div class="checkbox-item">
+                        <input type="checkbox" class="checkbox-input" <?= $formData['riwayat_operasi'] == 'tidak' ? 'checked' : '' ?> readonly>
+                        <span>Tidak</span>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" class="checkbox-input" <?= $formData['riwayat_operasi'] == 'ya' ? 'checked' : '' ?> readonly>
+                        <span>Ya</span>
+                    </div>
                 </div>
-                <div class="checkbox-item">
-                    <input type="checkbox" <?= $medicalHistory['riwayat_operasi'] == 'ya' ? 'checked' : '' ?> readonly> Ya
-                </div>
-                <?php if ($medicalHistory['riwayat_operasi'] == 'ya'): ?>
-                    <div style="margin-left: 20px; background: #fef3c7; padding: 8px; border-radius: 5px; margin-top: 5px;">
-                        Operasi apa? <?= $medicalHistory['operasi_apa'] ?><br>
-                        Kapan? <?= $medicalHistory['operasi_kapan'] ?>
+                <?php if ($formData['riwayat_operasi'] == 'ya'): ?>
+                    <div style="margin-top: 10px;">
+                        <div>Operasi apa? <?= $formData['operasi_apa'] ?></div>
+                        <div>Kapan? <?= $formData['operasi_kapan'] ?></div>
+                    </div>
+                <?php else: ?>
+                    <div style="margin-top: 10px;">
+                        <div>Operasi apa? _______________</div>
+                        <div>Kapan? _______________</div>
                     </div>
                 <?php endif; ?>
             </div>
-            <div class="col-6">
-                <strong>10. Riwayat pernah dirawat di RS:</strong>
-                <div class="checkbox-item">
-                    <input type="checkbox" <?= $medicalHistory['riwayat_dirawat'] == 'tidak' ? 'checked' : '' ?> readonly> Tidak
+            <div>
+                <div class="bold">9. Riwayat pernah dirawat di RS:</div>
+                <div class="checkbox-row">
+                    <div class="checkbox-item">
+                        <input type="checkbox" class="checkbox-input" <?= $formData['riwayat_pernah_dirawat'] == 'tidak' ? 'checked' : '' ?> readonly>
+                        <span>Tidak</span>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" class="checkbox-input" <?= $formData['riwayat_pernah_dirawat'] == 'ya' ? 'checked' : '' ?> readonly>
+                        <span>Ya</span>
+                    </div>
                 </div>
-                <div class="checkbox-item">
-                    <input type="checkbox" <?= $medicalHistory['riwayat_dirawat'] == 'ya' ? 'checked' : '' ?> readonly> Ya
-                </div>
-                <?php if ($medicalHistory['riwayat_dirawat'] == 'ya'): ?>
-                    <div style="margin-left: 20px; background: #fef3c7; padding: 8px; border-radius: 5px; margin-top: 5px;">
-                        Penyakit apa? <?= $medicalHistory['penyakit_apa'] ?><br>
-                        Kapan? <?= $medicalHistory['dirawat_kapan'] ?>
+                <?php if ($formData['riwayat_pernah_dirawat'] == 'ya'): ?>
+                    <div style="margin-top: 10px;">
+                        <div>Penyakit apa? <?= $formData['penyakit_apa'] ?></div>
+                        <div>Kapan? <?= $formData['dirawat_kapan'] ?></div>
+                    </div>
+                <?php else: ?>
+                    <div style="margin-top: 10px;">
+                        <div>Penyakit apa? _______________</div>
+                        <div>Kapan? _______________</div>
                     </div>
                 <?php endif; ?>
             </div>
         </div>
     </div>
 
-    <!-- Risk Assessment -->
-    <div class="form-section">
-        <div class="section-title">⚠️ Pengkajian Risiko Jatuh</div>
+    <!-- Section 5: Pengkajian Resiko Jatuh - DIPERBAIKI -->
+    <div class="section">
+        <div class="section-title">10. Pengkajian resiko jatuh</div>
 
-        <table class="resiko-table">
+        <table class="risk-table">
             <thead>
                 <tr>
-                    <th width="5%">No</th>
-                    <th width="55%">Faktor Risiko</th>
-                    <th width="25%">Skala Penilaian</th>
-                    <th width="15%">Hasil</th>
+                    <th width="8%">Resiko</th>
+                    <th width="60%">Skala</th>
+                    <th width="32%">Hasil</th>
                 </tr>
             </thead>
             <tbody>
-                <?php
-                $riskItems = [
-                    'Riwayat jatuh yang baru atau dalam 3 bulan terakhir',
-                    'Diagnosa medis sekunder > 1',
-                    'Alat bantu jalan',
-                    'Ada akses IV atau terapi heparin lock',
-                    'Cara berjalan/berpindah',
-                    'Status mental'
-                ];
-
-                $skalaOptions = [
-                    1 => 'Tidak = 0<br>Ya = 25',
-                    2 => 'Tidak = 0<br>Ya = 15',
-                    3 => 'Mandiri/Bedrest = 0<br>Penopang/Tongkat = 15<br>Mencengkeram = 15',
-                    4 => 'Tidak = 0<br>Ya = 20',
-                    5 => 'Normal = 0<br>Lemah = 10<br>Terganggu = 20<br>Lupa = 15',
-                    6 => 'Orientasi baik = 0<br>Lupa keterbatasan = 15'
-                ];
-
-                $totalResiko = 0;
-                foreach ($riskItems as $index => $item):
-                    $no = $index + 1;
-                    $hasil = $riskScores[$index] ?? 0;
-                    $totalResiko += $hasil;
-                ?>
-                    <tr>
-                        <td style="text-align: center; font-weight: bold;"><?= $no ?></td>
-                        <td><?= Html::encode($item) ?></td>
-                        <td style="font-size: 10px; line-height: 1.2;"><?= $skalaOptions[$no] ?? '' ?></td>
-                        <td style="text-align: center; font-weight: bold; font-size: 14px; color: <?= $hasil > 0 ? '#dc2626' : '#059669' ?>;">
-                            <?= $hasil ?>
-                        </td>
-                    </tr>
-                <?php endforeach; ?>
+                <tr>
+                    <td>Riwayat jatuh yang baru atau dalam 3 bulan terakhir</td>
+                    <td>Tidak = 0<br>Ya = 25</td>
+                    <td class="text-center bold" style="font-size: 12px;"><?= $riskScores[0] ?></td>
+                </tr>
+                <tr>
+                    <td>Diagnosa medis sekunder > 1</td>
+                    <td>Tidak = 0<br>Ya = 15</td>
+                    <td class="text-center bold" style="font-size: 12px;"><?= $riskScores[1] ?></td>
+                </tr>
+                <tr>
+                    <td>Alat bantu jalan</td>
+                    <td>Mandiri, bedrest, dibantu perawat, kursi roda = 0<br>Penopang, tongkat/walker = 15<br>Mencengkeram furniture/sesuatu untuk topangan = 15</td>
+                    <td class="text-center bold" style="font-size: 12px;"><?= $riskScores[2] ?></td>
+                </tr>
+                <tr>
+                    <td>Ad akses IV atau terapi heparin lock</td>
+                    <td>Tidak = 0<br>Ya = 20</td>
+                    <td class="text-center bold" style="font-size: 12px;"><?= $riskScores[3] ?></td>
+                </tr>
+                <tr>
+                    <td>Cara berjalan/berpindah</td>
+                    <td>Normal = 0<br>Lemah, langkah, diseret = 10<br>Terganggu, perlu bantuan, keseimbangan buruk = 20</td>
+                    <td class="text-center bold" style="font-size: 12px;"><?= $riskScores[4] ?></td>
+                </tr>
+                <tr>
+                    <td>Status mental</td>
+                    <td>Orientasi sesuai kemampuan diri = 0<br>Lupa keterbatasan diri = 15</td>
+                    <td class="text-center bold" style="font-size: 12px;"><?= $riskScores[5] ?></td>
+                </tr>
             </tbody>
             <tfoot>
-                <tr style="background: #f3f4f6;">
-                    <td colspan="3" style="text-align: right; font-weight: bold; font-size: 13px;">
-                        🧮 TOTAL SKOR RISIKO:
-                    </td>
-                    <td style="text-align: center; font-weight: bold; font-size: 18px; color: #1e40af;">
-                        <?= $totalResiko ?>
-                    </td>
+                <tr>
+                    <td colspan="2" class="text-center bold" style="background-color: #e0e0e0; font-size: 12px;">NILAI TOTAL</td>
+                    <td class="text-center bold" style="font-size: 16px; background-color: #e0e0e0; color: #d9534f;"><?= $totalRisk ?></td>
                 </tr>
             </tfoot>
         </table>
 
-        <!-- Risk Category Display -->
-        <?php $riskCategory = $helper->getRiskCategory($totalResiko); ?>
-        <div class="risk-category-display">
-            <div style="text-align: center; margin-bottom: 15px;">
-                <div style="background: <?= $riskCategory['warna'] ?>; color: white; padding: 12px 20px; border-radius: 25px; display: inline-block; font-weight: bold; font-size: 14px;">
-                    <?= $riskCategory['ikon'] ?> <?= $riskCategory['kategori'] ?>
-                </div>
-            </div>
-
-            <div style="background: white; padding: 15px; border-radius: 8px; border: 2px solid <?= $riskCategory['warna'] ?>;">
-                <div style="font-weight: bold; margin-bottom: 8px; color: #1e40af;">
-                    📋 REKOMENDASI PERAWATAN:
-                </div>
-                <div style="color: #374151; line-height: 1.4;">
-                    <?= $riskCategory['rekomendasi'] ?>
+        <!-- Risk Category Results -->
+        <div class="risk-result">
+            <div class="text-center">
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 15px;">
+                    <div style="border: 2px solid #000; padding: 8px; background-color: <?= $totalRisk <= 24 ? '#90EE90' : '#f0f0f0' ?>;">
+                        <div class="bold">Tidak berisiko</div>
+                        <div>(0-24)</div>
+                        <?php if ($totalRisk <= 24): ?>
+                            <div class="bold" style="color: #2d5a27; margin-top: 5px;">✓ AKTIF</div>
+                        <?php endif; ?>
+                    </div>
+                    <div style="border: 2px solid #000; padding: 8px; background-color: <?= ($totalRisk >= 25 && $totalRisk <= 44) ? '#FFD700' : '#f0f0f0' ?>;">
+                        <div class="bold">Perawatan yang baik</div>
+                        <div class="bold">Resiko rendah</div>
+                        <div>(25-44)</div>
+                        <?php if ($totalRisk >= 25 && $totalRisk <= 44): ?>
+                            <div class="bold" style="color: #8b6914; margin-top: 5px;">✓ AKTIF</div>
+                        <?php endif; ?>
+                    </div>
+                    <div style="border: 2px solid #000; padding: 8px; background-color: <?= $totalRisk >= 45 ? '#FFB6C1' : '#f0f0f0' ?>;">
+                        <div class="bold">Lakukan intervensi</div>
+                        <div class="bold">jatuh standar</div>
+                        <div class="bold">Resiko tinggi</div>
+                        <div>(≥45)</div>
+                        <?php if ($totalRisk >= 45): ?>
+                            <div class="bold" style="color: #8b0000; margin-top: 5px;">✓ AKTIF</div>
+                            <div style="margin-top: 5px;">
+                                <div class="bold" style="color: #8b0000;">Lakukan intervensi</div>
+                                <div class="bold" style="color: #8b0000;">jatuh risiko tinggi</div>
+                            </div>
+                        <?php endif; ?>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Professional Footer -->
-    <div style="margin-top: 30px; text-align: center; font-size: 10px; color: #666; border-top: 1px solid #dee2e6; padding-top: 15px;">
-        <div style="margin-bottom: 5px;">
-            <strong style="color: #2563eb;">PT BIGS INTEGRASI TEKNOLOGI</strong> - Medical Form System
-        </div>
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
-            <div>Form ID: <strong>FM<?= str_pad($model->id_form_data, 4, '0', STR_PAD_LEFT) ?></strong></div>
-            <div>Tanggal Cetak: <strong><?= date('d/m/Y H:i:s') ?></strong></div>
-            <div>Halaman: <strong>1 dari 1</strong></div>
-        </div>
-        <div style="margin-top: 8px; font-size: 9px; color: #9ca3af;">
-            ⚠️ Dokumen ini adalah hasil cetak resmi dari sistem dan memiliki kekuatan hukum yang sama dengan dokumen asli.
+    <!-- Footer with Signature Section -->
+    <div style="margin-top: 30px;">
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
+        <div></div>
+        <div class="petugas-box" style="text-align: center;">
+            <div class="bold" style="margin-bottom: 10px;">Nama Petugas:</div>
+            
+            <div style="margin: 5px 0;">
+                <strong>Tanggal: <?= date('d/m/Y') ?></strong>
+            </div>
+            
+            <div style="margin: 5px 0 20px 0;">
+                <strong>Pukul: <?= date('H:i') ?></strong>
+            </div>
+            
+            <div style="margin: 20px 0; height: 50px; border-bottom: 1px solid #000;"></div>
+            
+            <div class="bold">Tanda Tangan</div>
         </div>
     </div>
 </div>
 
+
+    <!-- Print Footer -->
+    <div style="margin-top: 20px; text-align: center; font-size: 9px; color: #666;">
+        <div>Medical Form System - PT BIGS Integrasi Teknologi</div>
+        <div>Form ID: FM<?= str_pad($model->id_form_data, 4, '0', STR_PAD_LEFT) ?> |
+            Tanggal Cetak: <?= date('d/m/Y H:i:s') ?> |
+            Total Resiko: <?= $totalRisk ?></div>
+    </div>
+</div>
+
 <?php
-// Register JavaScript for enhanced printing functionality
+// JavaScript untuk print functionality
 $this->registerJs("
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Print form initialized');
-    
     // Enhanced print function
-    window.printForm = function() {
+    window.printDocument = function() {
         const printElements = document.querySelectorAll('.no-print');
         printElements.forEach(el => el.style.display = 'none');
         
@@ -862,25 +882,32 @@ document.addEventListener('DOMContentLoaded', function() {
     document.addEventListener('keydown', function(e) {
         if (e.ctrlKey && e.key === 'p') {
             e.preventDefault();
-            printForm();
-        }
-        if (e.key === 'Escape') {
-            window.history.back();
+            printDocument();
         }
     });
     
-    // Print event handlers
+    // Print preparation
     window.addEventListener('beforeprint', function() {
-        console.log('Preparing document for printing...');
         document.body.style.margin = '0';
-        document.querySelector('.print-preview').style.padding = '10mm';
+        document.body.style.padding = '15mm';
+        
+        // Hide debug info saat print
+        const debugElements = document.querySelectorAll('.debug-info');
+        debugElements.forEach(el => el.style.display = 'none');
     });
     
     window.addEventListener('afterprint', function() {
-        console.log('Print completed');
         document.body.style.margin = '';
-        document.querySelector('.print-preview').style.padding = '20px';
+        document.body.style.padding = '20px';
+        
+        // Show debug info kembali setelah print
+        const debugElements = document.querySelectorAll('.debug-info');
+        debugElements.forEach(el => el.style.display = 'block');
     });
+    
+    console.log('Print form loaded successfully');
+    console.log('Risk scores: " . json_encode($riskScores) . "');
+    console.log('Total risk: " . (int)$totalRisk . "');
 });
 ", \yii\web\View::POS_END);
 ?>

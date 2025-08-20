@@ -314,12 +314,6 @@ class RegistrasiController extends Controller
         return $this->redirect(['view', 'id' => $id_registrasi]);
     }
 
-    // HAPUS SEMUA METHOD CHECK PERMISSION
-    /*
-    protected function checkPermission($model) { ... }
-    protected function checkDataFormPermission($model) { ... }
-    */
-
     /**
      * Process form data before saving
      */

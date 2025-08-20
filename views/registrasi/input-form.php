@@ -1096,7 +1096,16 @@ function printForm() {
                                 ]) ?>
                             </div>
                             <div>
-                                <label class="form-label-modern">Lingkar Badan (Cm)</label>
+                                <label class="form-label-modern">Panjang Badan (Cm)</label>
+                                <?= $form->field($model, 'antro_panjang', ['template' => '{input}'])->textInput([
+                                    'class' => 'form-control-modern',
+                                    'type' => 'number',
+                                    'step' => '0.1',
+                                    'placeholder' => '80'
+                                ]) ?>
+                            </div>
+                            <div>
+                                <label class="form-label-modern">Linkar Kepala (Cm)</label>
                                 <?= $form->field($model, 'antro_lingkar', ['template' => '{input}'])->textInput([
                                     'class' => 'form-control-modern',
                                     'type' => 'number',

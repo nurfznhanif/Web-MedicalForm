@@ -54,6 +54,7 @@ class DataForm extends ActiveRecord
     // Antropometri
     public $antro_berat;
     public $antro_tinggi;
+    public $antro_panjang;
     public $antro_lingkar;
     public $antro_imt;
 
@@ -120,7 +121,7 @@ class DataForm extends ActiveRecord
             [['keadaan_umum', 'warna_kulit', 'kesadaran'], 'safe'],
             [['tanda_vital_td', 'tanda_vital_p', 'tanda_vital_n', 'tanda_vital_s'], 'safe'],
             [['fungsi_alat_bantu', 'fungsi_prothesa', 'fungsi_cacat_tubuh', 'fungsi_adl', 'riwayat_jatuh_fungsional'], 'safe'],
-            [['antro_berat', 'antro_tinggi', 'antro_lingkar'], 'number'],
+            [['antro_berat', 'antro_tinggi', 'antro_lingkar', 'antro_panjang'], 'number'],
             [['antro_imt'], 'number'],
             [['status_gizi'], 'safe'],
             [['riwayat_penyakit_sekarang', 'riwayat_penyakit_sebelumnya', 'riwayat_penyakit_keluarga'], 'safe'],
@@ -157,6 +158,8 @@ class DataForm extends ActiveRecord
             'kesadaran' => 'Kesadaran',
             'antro_berat' => 'Berat Badan (Kg)',
             'antro_tinggi' => 'Tinggi Badan (Cm)',
+            'antro_panjang' => 'Panjang Badan (Cm)',
+            'antro_lingkar' => 'Lingkar Kepala (Cm)',
             'antro_imt' => 'IMT',
             'status_gizi' => 'Status Gizi',
         ];
@@ -167,10 +170,7 @@ class DataForm extends ActiveRecord
      */
     public function beforeSave($insert)
     {
-        // Only prepare data for new records, not updates
-        if ($insert) {
-            $this->data = $this->prepareFormDataForSave();
-        }
+        $this->data = $this->prepareFormDataForSave();
         return parent::beforeSave($insert);
     }
 
@@ -180,12 +180,11 @@ class DataForm extends ActiveRecord
     public function afterFind()
     {
         parent::afterFind();
-        // Hanya load data jika data tidak kosong dan valid
         if (!empty($this->data)) {
             try {
                 $this->loadFormData();
             } catch (\Exception $e) {
-                // Log error tapi jangan stop execution
+                // Log error
                 Yii::error("Error loading form data for ID {$this->id_form_data}: " . $e->getMessage());
                 // Set default values jika terjadi error
                 $this->setDefaultValues();
@@ -211,11 +210,11 @@ class DataForm extends ActiveRecord
     }
 
     /**
-     * Prepare form data untuk disimpan ke JSON - Public method
+     * Prepare form data untuk disimpan ke JSON
      */
     public function prepareFormDataForSave()
     {
-        // Hitung IMT otomatis jika belum ada
+        // Hitung IMT otomatis
         if ($this->antro_berat && $this->antro_tinggi && !$this->antro_imt) {
             $tinggi_meter = $this->antro_tinggi / 100;
             $this->antro_imt = round($this->antro_berat / ($tinggi_meter * $tinggi_meter), 2);
@@ -223,44 +222,54 @@ class DataForm extends ActiveRecord
 
         // Prepare resiko jatuh data dengan struktur yang benar
         $resikoJatuhArray = [];
-        if (is_array($this->resiko_jatuh_items)) {
-            $resikoLabels = [
-                1 => 'Riwayat jatuh yang baru atau dalam 3 bulan terakhir',
-                2 => 'Diagnosa medis sekunder > 1',
-                3 => 'Alat bantu jalan',
-                4 => 'Ad akses IV atau terapi heparin lock',
-                5 => 'Cara berjalan/berpindah',
-                6 => 'Status mental'
-            ];
+        $totalResikoJatuh = 0;
 
-            $totalResikoJatuh = 0;
-            for ($i = 1; $i <= 6; $i++) {
-                $hasil = isset($this->resiko_jatuh_items['risk' . $i]) ? (int)$this->resiko_jatuh_items['risk' . $i] : 0;
-                $totalResikoJatuh += $hasil;
+        $resikoLabels = [
+            1 => 'Riwayat jatuh yang baru atau dalam 3 bulan terakhir',
+            2 => 'Diagnosa medis sekunder > 1',
+            3 => 'Alat bantu jalan',
+            4 => 'Ad akses IV atau terapi heparin lock',
+            5 => 'Cara berjalan/berpindah',
+            6 => 'Status mental'
+        ];
 
-                $resikoJatuhArray[] = [
-                    'resiko' => $resikoLabels[$i],
-                    'hasil' => $hasil
-                ];
-            }
-            $this->total_resiko_jatuh = $totalResikoJatuh;
-        } else {
-            // Default values jika tidak ada data
-            $resikoJatuhArray = [
-                ['resiko' => 'Riwayat jatuh yang baru atau dalam 3 bulan terakhir', 'hasil' => 25],
-                ['resiko' => 'Diagnosa medis sekunder > 1', 'hasil' => 15],
-                ['resiko' => 'Alat bantu jalan', 'hasil' => 0],
-                ['resiko' => 'Ad akses IV atau terapi heparin lock', 'hasil' => 20],
-                ['resiko' => 'Cara berjalan/berpindah', 'hasil' => 0],
-                ['resiko' => 'Status mental', 'hasil' => 0]
-            ];
-            $this->total_resiko_jatuh = 60;
+        if (!is_array($this->resiko_jatuh_items)) {
+            $this->resiko_jatuh_items = [];
         }
 
-        // Tentukan kategori resiko jatuh
-        if ($this->total_resiko_jatuh <= 24) {
+        // Process risk items
+        for ($i = 1; $i <= 6; $i++) {
+            $riskKey = 'risk' . $i;
+            $hasil = 0;
+
+            // Cek dari berbagai sumber data
+            if (isset($this->resiko_jatuh_items[$riskKey])) {
+                $hasil = (int)$this->resiko_jatuh_items[$riskKey];
+            } elseif (isset($_POST[$riskKey])) {
+                // Ambil dari POST data jika ada
+                $hasil = (int)$_POST[$riskKey];
+                $this->resiko_jatuh_items[$riskKey] = $hasil;
+            }
+
+            $totalResikoJatuh += $hasil;
+
+            $resikoJatuhArray[] = [
+                'resiko' => $resikoLabels[$i],
+                'hasil' => $hasil
+            ];
+        }
+
+        // Set total dari perhitungan atau dari property yang sudah di-set
+        if ($this->total_resiko_jatuh && is_numeric($this->total_resiko_jatuh)) {
+            $totalResikoJatuh = (int)$this->total_resiko_jatuh;
+        } else {
+            $this->total_resiko_jatuh = $totalResikoJatuh;
+        }
+
+        // Kategori resiko jatuh
+        if ($totalResikoJatuh <= 24) {
             $this->kategori_resiko_jatuh = 'Tidak berisiko (0-24)';
-        } elseif ($this->total_resiko_jatuh <= 44) {
+        } elseif ($totalResikoJatuh <= 44) {
             $this->kategori_resiko_jatuh = 'Resiko rendah (25-44)';
         } else {
             $this->kategori_resiko_jatuh = 'Resiko tinggi (≥45)';
@@ -304,6 +313,7 @@ class DataForm extends ActiveRecord
                     'berat' => $this->antro_berat ?: '',
                     'tinggi' => $this->antro_tinggi ?: '',
                     'lingkar' => $this->antro_lingkar ?: '',
+                    'panjang' => $this->antro_panjang ?: '',
                     'imt' => $this->antro_imt ?: '',
                 ],
             ],
@@ -328,8 +338,9 @@ class DataForm extends ActiveRecord
                 'kapan' => $this->dirawat_detail_kapan ?: '',
             ],
 
-            // Resiko jatuh dengan struktur array yang benar
+            // Resiko jatuh 
             'resiko_jatuh' => $resikoJatuhArray,
+            'resiko_jatuh_items' => $this->resiko_jatuh_items,
             'total_resiko_jatuh' => $this->total_resiko_jatuh ?: 0,
             'kategori_resiko_jatuh' => $this->kategori_resiko_jatuh ?: '',
         ];
@@ -401,6 +412,7 @@ class DataForm extends ActiveRecord
                 $this->antro_berat = $antro['berat'] ?? '';
                 $this->antro_tinggi = $antro['tinggi'] ?? '';
                 $this->antro_lingkar = $antro['lingkar'] ?? '';
+                $this->antro_panjang = $antro['panjang'] ?? '';
                 $this->antro_imt = $antro['imt'] ?? '';
             }
         }
@@ -432,24 +444,37 @@ class DataForm extends ActiveRecord
             $this->dirawat_detail_kapan = $dirawatDetail['kapan'] ?? '';
         }
 
-        // Resiko jatuh - Safe handling
-        $resikoJatuh = $data['resiko_jatuh'] ?? [];
+        // Resiko jatuh dengan multiple sources
         $this->total_resiko_jatuh = is_numeric($data['total_resiko_jatuh'] ?? 0) ? (int)$data['total_resiko_jatuh'] : 0;
         $this->kategori_resiko_jatuh = $data['kategori_resiko_jatuh'] ?? '';
 
-        // Load resiko jatuh items dengan safe checking
-        if (!empty($resikoJatuh) && is_array($resikoJatuh)) {
-            $riskItems = [];
-            foreach ($resikoJatuh as $index => $item) {
+        // Load resiko jatuh items dengan prioritas
+        $riskItems = [];
+
+        // Prioritas 1: Dari resiko_jatuh_items langsung
+        if (isset($data['resiko_jatuh_items']) && is_array($data['resiko_jatuh_items'])) {
+            $riskItems = $data['resiko_jatuh_items'];
+        }
+        // Prioritas 2: Dari array resiko_jatuh
+        elseif (isset($data['resiko_jatuh']) && is_array($data['resiko_jatuh'])) {
+            foreach ($data['resiko_jatuh'] as $index => $item) {
                 if (is_array($item) && isset($item['hasil'])) {
-                    $riskKey = 'risk' . (is_numeric($index) ? ($index + 1) : $index);
+                    $riskKey = 'risk' . ($index + 1);
                     $riskItems[$riskKey] = is_numeric($item['hasil']) ? (int)$item['hasil'] : 0;
                 }
             }
-            $this->resiko_jatuh_items = $riskItems;
-        } else {
-            $this->resiko_jatuh_items = [];
         }
+
+        $this->resiko_jatuh_items = $riskItems;
+    }
+
+    /**
+     * Force reload data
+     */
+    public function forceReloadData()
+    {
+        $this->loadFormData();
+        return $this;
     }
 
     /**
