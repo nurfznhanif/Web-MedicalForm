@@ -823,8 +823,34 @@ $this->registerCss("
             </h6>
 
             <?php
-            // Calculate risk score from form data
-            $totalRisk = 0;
+            // Get risk assessment data from the model
+            $riskItemsData = $model->resiko_jatuh_items;
+            $totalRisk = $model->total_resiko_jatuh;
+            $riskCategory = $model->kategori_resiko_jatuh;
+
+            // If data is stored as JSON string, decode it
+            if (is_string($riskItemsData)) {
+                $riskItemsData = json_decode($riskItemsData, true);
+            }
+
+            // Default scores if no data exists
+            $riskScores = [0, 0, 0, 0, 0, 0];
+            if (is_array($riskItemsData)) {
+                $riskScores = [
+                    $riskItemsData['risk1'] ?? 0,
+                    $riskItemsData['risk2'] ?? 0,
+                    $riskItemsData['risk3'] ?? 0,
+                    $riskItemsData['risk4'] ?? 0,
+                    $riskItemsData['risk5'] ?? 0,
+                    $riskItemsData['risk6'] ?? 0
+                ];
+            }
+
+            // Calculate total if not set
+            if (empty($totalRisk)) {
+                $totalRisk = array_sum($riskScores);
+            }
+
             $riskItems = [
                 'Riwayat jatuh yang baru atau dalam 3 bulan terakhir',
                 'Diagnosa medis sekunder > 1',
@@ -833,14 +859,6 @@ $this->registerCss("
                 'Cara berjalan/berpindah',
                 'Status mental'
             ];
-
-            // Get risk scores from stored data
-            $riskScores = [25, 15, 0, 20, 0, 0]; // Default scores
-            if (isset($data['resiko_jatuh_scores'])) {
-                $riskScores = $data['resiko_jatuh_scores'];
-            }
-
-            $totalRisk = array_sum($riskScores);
             ?>
 
             <div class="risk-assessment-table">
@@ -893,32 +911,45 @@ $this->registerCss("
 
             <div class="text-center" style="margin-top: 1.5rem;">
                 <?php
-                $riskCategory = '';
-                $riskClass = '';
-                $riskIcon = '';
-                $riskRecommendation = '';
-
-                if ($totalRisk <= 24) {
-                    $riskCategory = 'Tidak Berisiko (0-24)';
-                    $riskClass = 'risk-low';
-                    $riskIcon = 'fas fa-check-circle';
-                    $riskRecommendation = 'Perawatan standar';
-                } elseif ($totalRisk <= 44) {
-                    $riskCategory = 'Risiko Rendah (25-44)';
-                    $riskClass = 'risk-medium';
-                    $riskIcon = 'fas fa-exclamation-triangle';
-                    $riskRecommendation = 'Lakukan intervensi jatuh standar';
+                // Determine risk category if not set in database
+                if (empty($riskCategory)) {
+                    if ($totalRisk <= 24) {
+                        $riskCategory = 'Tidak Berisiko (0-24)';
+                        $riskClass = 'risk-low';
+                        $riskIcon = 'fas fa-check-circle';
+                        $riskRecommendation = 'Perawatan standar';
+                    } elseif ($totalRisk <= 44) {
+                        $riskCategory = 'Risiko Rendah (25-44)';
+                        $riskClass = 'risk-medium';
+                        $riskIcon = 'fas fa-exclamation-triangle';
+                        $riskRecommendation = 'Lakukan intervensi jatuh standar';
+                    } else {
+                        $riskCategory = 'Risiko Tinggi (≥45)';
+                        $riskClass = 'risk-high';
+                        $riskIcon = 'fas fa-exclamation-circle';
+                        $riskRecommendation = 'Lakukan intervensi jatuh risiko tinggi';
+                    }
                 } else {
-                    $riskCategory = 'Risiko Tinggi (≥45)';
-                    $riskClass = 'risk-high';
-                    $riskIcon = 'fas fa-exclamation-circle';
-                    $riskRecommendation = 'Lakukan intervensi jatuh risiko tinggi';
+                    // Map existing category to appropriate styling
+                    if (strpos($riskCategory, 'Tidak') !== false) {
+                        $riskClass = 'risk-low';
+                        $riskIcon = 'fas fa-check-circle';
+                        $riskRecommendation = 'Perawatan standar';
+                    } elseif (strpos($riskCategory, 'rendah') !== false) {
+                        $riskClass = 'risk-medium';
+                        $riskIcon = 'fas fa-exclamation-triangle';
+                        $riskRecommendation = 'Lakukan intervensi jatuh standar';
+                    } else {
+                        $riskClass = 'risk-high';
+                        $riskIcon = 'fas fa-exclamation-circle';
+                        $riskRecommendation = 'Lakukan intervensi jatuh risiko tinggi';
+                    }
                 }
                 ?>
 
                 <div class="risk-category-badge <?= $riskClass ?>">
                     <i class="<?= $riskIcon ?>"></i>
-                    <span><?= $riskCategory ?></span>
+                    <span><?= Html::encode($riskCategory) ?></span>
                 </div>
 
                 <div style="margin-top: 1rem; padding: 1rem; background: rgba(59, 130, 246, 0.05); border-radius: 8px; border: 2px solid rgba(59, 130, 246, 0.1);">

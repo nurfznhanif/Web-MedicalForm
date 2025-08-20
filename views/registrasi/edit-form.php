@@ -421,19 +421,6 @@ $this->registerCss("
                         <span class="info-value"><?= $model->update_time_at ? date('d/m/Y H:i', strtotime($model->update_time_at)) : 'Belum pernah diubah' ?></span>
                     </div>
                 </div>
-
-                <div style="margin-top: 1.5rem; padding: 1rem; background: rgba(16, 185, 129, 0.1); border-radius: 8px; border: 2px solid rgba(16, 185, 129, 0.2);">
-                    <h6 style="margin: 0 0 0.5rem 0; color: var(--success); font-weight: 600;">
-                        <i class="fas fa-lightbulb me-2"></i>
-                        Tips Mode Edit
-                    </h6>
-                    <ul style="margin: 0; padding-left: 1rem; color: var(--text-dark);">
-                        <li>Semua section akan terbuka secara otomatis untuk memudahkan editing</li>
-                        <li>Data existing akan ter-load otomatis di form</li>
-                        <li>Gunakan <kbd>Ctrl + S</kbd> untuk save cepat</li>
-                        <li>Perubahan akan tersimpan otomatis setiap 30 detik</li>
-                    </ul>
-                </div>
             </div>
         </div>
 
@@ -534,12 +521,78 @@ $(document).ready(function() {
     console.log('=== EDIT MODE READY ===');
 });
 
+// Fungsi untuk menghitung risiko jatuh yang diperbaiki
+function hitungResikoJatuh() {
+    console.log('Menghitung risiko jatuh...');
+    
+    // Inisialisasi total skor
+    var totalSkor = 0;
+    
+    // Hitung skor untuk setiap parameter
+    var params = [
+        'risk1', 'risk2', 'risk3', 'risk4', 'risk5', 'risk6'
+    ];
+    
+    params.forEach(function(param, index) {
+        var nilai = $('input[name=\"' + param + '\"]:checked').val();
+        if (nilai) {
+            totalSkor += parseInt(nilai);
+            console.log(param + ': ' + nilai + ' poin');
+        }
+    });
+    
+    // Tampilkan total skor
+    $('#total-resiko-jatuh').val(totalSkor);
+    console.log('Total skor: ' + totalSkor);
+    
+    // Tentukan kategori berdasarkan total skor
+    var kategori = '';
+    if (totalSkor <= 24) {
+        kategori = 'Tidak berisiko (0-24)';
+    } else if (totalSkor <= 44) {
+        kategori = 'Resiko rendah (25-44)';
+    } else {
+        kategori = 'Resiko tinggi (≥45)';
+    }
+    
+    // Tampilkan kategori
+    $('#kategori-resiko-jatuh').val(kategori);
+    console.log('Kategori: ' + kategori);
+    
+    // Update tampilan dengan warna sesuai kategori
+    var displayElement = $('#resiko-jatuh-display');
+    displayElement.removeClass('resiko-tinggi resiko-rendah tidak-berisiko');
+    
+    if (totalSkor <= 24) {
+        displayElement.addClass('tidak-berisiko').html('<i class=\"fas fa-check-circle\"></i> ' + kategori);
+    } else if (totalSkor <= 44) {
+        displayElement.addClass('resiko-rendah').html('<i class=\"fas fa-exclamation-triangle\"></i> ' + kategori);
+    } else {
+        displayElement.addClass('resiko-tinggi').html('<i class=\"fas fa-exclamation-circle\"></i> ' + kategori);
+    }
+    
+    return totalSkor;
+}
+
+// Event listener untuk semua input risiko jatuh
+$(document).on('change', 'input[name^=\"risk\"]', function() {
+    hitungResikoJatuh();
+});
+
 // Enhanced save function for edit mode
 function saveForm() {
     const form = document.getElementById('medical-form');
     if (form) {
         // Update save status
         $('.save-status').css('background', '#3b82f6');
+        
+        // Hitung ulang semua nilai sebelum submit
+        if (typeof hitungResikoJatuh === 'function') {
+            hitungResikoJatuh();
+        }
+        if (typeof hitungIMT === 'function') {
+            hitungIMT();
+        }
         
         // Show saving animation
         const submitButton = document.querySelector('.btn-success-modern');

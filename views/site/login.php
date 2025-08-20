@@ -312,9 +312,6 @@ $this->title = 'Login';
             <div class="footer-text">
                 &copy; 2024 Medical Form System. All rights reserved.
             </div>
-            <div class="footer-version">
-                Version 2.0 - Modern Edition
-            </div>
         </div>
     </div>
 
