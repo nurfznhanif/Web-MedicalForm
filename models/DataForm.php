@@ -167,8 +167,9 @@ class DataForm extends ActiveRecord
      */
     public function beforeSave($insert)
     {
-        if ($insert || $this->hasChanged()) {
-            $this->data = $this->prepareFormData();
+        // Only prepare data for new records, not updates
+        if ($insert) {
+            $this->data = $this->prepareFormDataForSave();
         }
         return parent::beforeSave($insert);
     }
@@ -179,43 +180,40 @@ class DataForm extends ActiveRecord
     public function afterFind()
     {
         parent::afterFind();
-        $this->loadFormData();
-    }
-
-    /**
-     * Check if any form data has changed
-     */
-    private function hasChanged()
-    {
-        $attributes = [
-            'tanggal_pengkajian',
-            'jam_pengkajian',
-            'poliklinik',
-            'cara_masuk',
-            'anamnesis',
-            'alergi',
-            'keluhan_utama',
-            'keadaan_umum',
-            'warna_kulit',
-            'kesadaran',
-            'antro_berat',
-            'antro_tinggi',
-            'antro_imt',
-            'status_gizi'
-        ];
-
-        foreach ($attributes as $attr) {
-            if ($this->isAttributeChanged($attr)) {
-                return true;
+        // Hanya load data jika data tidak kosong dan valid
+        if (!empty($this->data)) {
+            try {
+                $this->loadFormData();
+            } catch (\Exception $e) {
+                // Log error tapi jangan stop execution
+                Yii::error("Error loading form data for ID {$this->id_form_data}: " . $e->getMessage());
+                // Set default values jika terjadi error
+                $this->setDefaultValues();
             }
         }
-        return false;
     }
 
     /**
-     * Prepare form data untuk disimpan ke JSON
+     * Set default values untuk menghindari error
      */
-    private function prepareFormData()
+    private function setDefaultValues()
+    {
+        $this->tanggal_pengkajian = '';
+        $this->jam_pengkajian = '';
+        $this->poliklinik = '';
+        $this->cara_masuk = '';
+        $this->anamnesis = '';
+        $this->alergi = '';
+        $this->keluhan_utama = '';
+        $this->resiko_jatuh_items = [];
+        $this->total_resiko_jatuh = 0;
+        $this->kategori_resiko_jatuh = '';
+    }
+
+    /**
+     * Prepare form data untuk disimpan ke JSON - Public method
+     */
+    public function prepareFormDataForSave()
     {
         // Hitung IMT otomatis jika belum ada
         if ($this->antro_berat && $this->antro_tinggi && !$this->antro_imt) {
@@ -270,70 +268,70 @@ class DataForm extends ActiveRecord
 
         return [
             // Basic info
-            'tanggal_pengkajian' => $this->tanggal_pengkajian,
-            'jam_pengkajian' => $this->jam_pengkajian,
-            'poliklinik' => $this->poliklinik,
+            'tanggal_pengkajian' => $this->tanggal_pengkajian ?: '',
+            'jam_pengkajian' => $this->jam_pengkajian ?: '',
+            'poliklinik' => $this->poliklinik ?: '',
 
             // Pengkajian saat datang
-            'cara_masuk' => $this->cara_masuk,
-            'anamnesis' => $this->anamnesis,
+            'cara_masuk' => $this->cara_masuk ?: '',
+            'anamnesis' => $this->anamnesis ?: '',
             'anamnesis_detail' => [
-                'diperoleh' => $this->anamnesis_diperoleh,
-                'hubungan' => $this->anamnesis_hubungan,
+                'diperoleh' => $this->anamnesis_diperoleh ?: '',
+                'hubungan' => $this->anamnesis_hubungan ?: '',
             ],
-            'alergi' => $this->alergi,
-            'keluhan_utama' => $this->keluhan_utama,
+            'alergi' => $this->alergi ?: '',
+            'keluhan_utama' => $this->keluhan_utama ?: '',
 
             // Pemeriksaan fisik
             'pemeriksaan_fisik' => [
-                'keadaan_umum' => $this->keadaan_umum,
-                'warna_kulit' => $this->warna_kulit,
-                'kesadaran' => $this->kesadaran,
+                'keadaan_umum' => $this->keadaan_umum ?: '',
+                'warna_kulit' => $this->warna_kulit ?: '',
+                'kesadaran' => $this->kesadaran ?: '',
                 'tanda_vital' => [
-                    'td' => $this->tanda_vital_td,
-                    'p' => $this->tanda_vital_p,
-                    'n' => $this->tanda_vital_n,
-                    's' => $this->tanda_vital_s,
+                    'td' => $this->tanda_vital_td ?: '',
+                    'p' => $this->tanda_vital_p ?: '',
+                    'n' => $this->tanda_vital_n ?: '',
+                    's' => $this->tanda_vital_s ?: '',
                 ],
                 'fungsional' => [
-                    'alat_bantu' => $this->fungsi_alat_bantu,
-                    'prothesa' => $this->fungsi_prothesa,
-                    'cacat_tubuh' => $this->fungsi_cacat_tubuh,
-                    'adl' => $this->fungsi_adl,
-                    'riwayat_jatuh' => $this->riwayat_jatuh_fungsional,
+                    'alat_bantu' => $this->fungsi_alat_bantu ?: '',
+                    'prothesa' => $this->fungsi_prothesa ?: '',
+                    'cacat_tubuh' => $this->fungsi_cacat_tubuh ?: '',
+                    'adl' => $this->fungsi_adl ?: '',
+                    'riwayat_jatuh' => $this->riwayat_jatuh_fungsional ?: '',
                 ],
                 'antropometri' => [
-                    'berat' => $this->antro_berat,
-                    'tinggi' => $this->antro_tinggi,
-                    'lingkar' => $this->antro_lingkar,
-                    'imt' => $this->antro_imt,
+                    'berat' => $this->antro_berat ?: '',
+                    'tinggi' => $this->antro_tinggi ?: '',
+                    'lingkar' => $this->antro_lingkar ?: '',
+                    'imt' => $this->antro_imt ?: '',
                 ],
             ],
-            'status_gizi' => $this->status_gizi,
+            'status_gizi' => $this->status_gizi ?: '',
 
             // Riwayat penyakit
             'riwayat_penyakit' => [
-                'sekarang' => $this->riwayat_penyakit_sekarang,
-                'sebelumnya' => $this->riwayat_penyakit_sebelumnya,
-                'keluarga' => $this->riwayat_penyakit_keluarga,
+                'sekarang' => $this->riwayat_penyakit_sekarang ?: '',
+                'sebelumnya' => $this->riwayat_penyakit_sebelumnya ?: '',
+                'keluarga' => $this->riwayat_penyakit_keluarga ?: '',
             ],
 
             // Riwayat operasi dan rawat inap
-            'riwayat_operasi' => $this->riwayat_operasi,
+            'riwayat_operasi' => $this->riwayat_operasi ?: '',
             'operasi_detail' => [
-                'apa' => $this->operasi_detail_apa,
-                'kapan' => $this->operasi_detail_kapan,
+                'apa' => $this->operasi_detail_apa ?: '',
+                'kapan' => $this->operasi_detail_kapan ?: '',
             ],
-            'riwayat_pernah_dirawat' => $this->riwayat_pernah_dirawat,
+            'riwayat_pernah_dirawat' => $this->riwayat_pernah_dirawat ?: '',
             'dirawat_detail' => [
-                'penyakit' => $this->dirawat_detail_penyakit,
-                'kapan' => $this->dirawat_detail_kapan,
+                'penyakit' => $this->dirawat_detail_penyakit ?: '',
+                'kapan' => $this->dirawat_detail_kapan ?: '',
             ],
 
             // Resiko jatuh dengan struktur array yang benar
             'resiko_jatuh' => $resikoJatuhArray,
-            'total_resiko_jatuh' => $this->total_resiko_jatuh,
-            'kategori_resiko_jatuh' => $this->kategori_resiko_jatuh,
+            'total_resiko_jatuh' => $this->total_resiko_jatuh ?: 0,
+            'kategori_resiko_jatuh' => $this->kategori_resiko_jatuh ?: '',
         ];
     }
 
@@ -342,76 +340,115 @@ class DataForm extends ActiveRecord
      */
     private function loadFormData()
     {
-        if (!empty($this->data)) {
-            $data = is_string($this->data) ? json_decode($this->data, true) : $this->data;
+        if (empty($this->data)) {
+            return;
+        }
 
-            if (!is_array($data)) return;
+        $data = is_string($this->data) ? json_decode($this->data, true) : $this->data;
 
-            // Basic info
-            $this->tanggal_pengkajian = $data['tanggal_pengkajian'] ?? '';
-            $this->jam_pengkajian = $data['jam_pengkajian'] ?? '';
-            $this->poliklinik = $data['poliklinik'] ?? '';
+        if (!is_array($data)) {
+            return;
+        }
 
-            // Pengkajian saat datang
-            $this->cara_masuk = $data['cara_masuk'] ?? '';
-            $this->anamnesis = $data['anamnesis'] ?? '';
-            $this->anamnesis_diperoleh = $data['anamnesis_detail']['diperoleh'] ?? '';
-            $this->anamnesis_hubungan = $data['anamnesis_detail']['hubungan'] ?? '';
-            $this->alergi = $data['alergi'] ?? '';
-            $this->keluhan_utama = $data['keluhan_utama'] ?? '';
+        // Basic info
+        $this->tanggal_pengkajian = $data['tanggal_pengkajian'] ?? '';
+        $this->jam_pengkajian = $data['jam_pengkajian'] ?? '';
+        $this->poliklinik = $data['poliklinik'] ?? '';
 
-            // Pemeriksaan fisik
-            $fisik = $data['pemeriksaan_fisik'] ?? [];
+        // Pengkajian saat datang
+        $this->cara_masuk = $data['cara_masuk'] ?? '';
+        $this->anamnesis = $data['anamnesis'] ?? '';
+
+        // Safe access untuk anamnesis_detail
+        $anamnesisDetail = $data['anamnesis_detail'] ?? [];
+        if (is_array($anamnesisDetail)) {
+            $this->anamnesis_diperoleh = $anamnesisDetail['diperoleh'] ?? '';
+            $this->anamnesis_hubungan = $anamnesisDetail['hubungan'] ?? '';
+        }
+
+        $this->alergi = $data['alergi'] ?? '';
+        $this->keluhan_utama = $data['keluhan_utama'] ?? '';
+
+        // Pemeriksaan fisik
+        $fisik = $data['pemeriksaan_fisik'] ?? [];
+        if (is_array($fisik)) {
             $this->keadaan_umum = $fisik['keadaan_umum'] ?? '';
             $this->warna_kulit = $fisik['warna_kulit'] ?? '';
             $this->kesadaran = $fisik['kesadaran'] ?? '';
 
             // Tanda vital
             $vital = $fisik['tanda_vital'] ?? [];
-            $this->tanda_vital_td = $vital['td'] ?? '';
-            $this->tanda_vital_p = $vital['p'] ?? '';
-            $this->tanda_vital_n = $vital['n'] ?? '';
-            $this->tanda_vital_s = $vital['s'] ?? '';
+            if (is_array($vital)) {
+                $this->tanda_vital_td = $vital['td'] ?? '';
+                $this->tanda_vital_p = $vital['p'] ?? '';
+                $this->tanda_vital_n = $vital['n'] ?? '';
+                $this->tanda_vital_s = $vital['s'] ?? '';
+            }
 
             // Fungsional
             $fungsional = $fisik['fungsional'] ?? [];
-            $this->fungsi_alat_bantu = $fungsional['alat_bantu'] ?? '';
-            $this->fungsi_prothesa = $fungsional['prothesa'] ?? '';
-            $this->fungsi_cacat_tubuh = $fungsional['cacat_tubuh'] ?? '';
-            $this->fungsi_adl = $fungsional['adl'] ?? '';
-            $this->riwayat_jatuh_fungsional = $fungsional['riwayat_jatuh'] ?? '';
+            if (is_array($fungsional)) {
+                $this->fungsi_alat_bantu = $fungsional['alat_bantu'] ?? '';
+                $this->fungsi_prothesa = $fungsional['prothesa'] ?? '';
+                $this->fungsi_cacat_tubuh = $fungsional['cacat_tubuh'] ?? '';
+                $this->fungsi_adl = $fungsional['adl'] ?? '';
+                $this->riwayat_jatuh_fungsional = $fungsional['riwayat_jatuh'] ?? '';
+            }
 
             // Antropometri
             $antro = $fisik['antropometri'] ?? [];
-            $this->antro_berat = $antro['berat'] ?? '';
-            $this->antro_tinggi = $antro['tinggi'] ?? '';
-            $this->antro_lingkar = $antro['lingkar'] ?? '';
-            $this->antro_imt = $antro['imt'] ?? '';
+            if (is_array($antro)) {
+                $this->antro_berat = $antro['berat'] ?? '';
+                $this->antro_tinggi = $antro['tinggi'] ?? '';
+                $this->antro_lingkar = $antro['lingkar'] ?? '';
+                $this->antro_imt = $antro['imt'] ?? '';
+            }
+        }
 
-            $this->status_gizi = $data['status_gizi'] ?? '';
+        $this->status_gizi = $data['status_gizi'] ?? '';
 
-            // Riwayat penyakit
-            $riwayat = $data['riwayat_penyakit'] ?? [];
+        // Riwayat penyakit
+        $riwayat = $data['riwayat_penyakit'] ?? [];
+        if (is_array($riwayat)) {
             $this->riwayat_penyakit_sekarang = $riwayat['sekarang'] ?? '';
             $this->riwayat_penyakit_sebelumnya = $riwayat['sebelumnya'] ?? '';
             $this->riwayat_penyakit_keluarga = $riwayat['keluarga'] ?? '';
+        }
 
-            // Riwayat operasi dan rawat inap
-            $this->riwayat_operasi = $data['riwayat_operasi'] ?? '';
-            $operasiDetail = $data['operasi_detail'] ?? [];
+        // Riwayat operasi dan rawat inap
+        $this->riwayat_operasi = $data['riwayat_operasi'] ?? '';
+
+        $operasiDetail = $data['operasi_detail'] ?? [];
+        if (is_array($operasiDetail)) {
             $this->operasi_detail_apa = $operasiDetail['apa'] ?? '';
             $this->operasi_detail_kapan = $operasiDetail['kapan'] ?? '';
+        }
 
-            $this->riwayat_pernah_dirawat = $data['riwayat_pernah_dirawat'] ?? '';
-            $dirawatDetail = $data['dirawat_detail'] ?? [];
+        $this->riwayat_pernah_dirawat = $data['riwayat_pernah_dirawat'] ?? '';
+
+        $dirawatDetail = $data['dirawat_detail'] ?? [];
+        if (is_array($dirawatDetail)) {
             $this->dirawat_detail_penyakit = $dirawatDetail['penyakit'] ?? '';
             $this->dirawat_detail_kapan = $dirawatDetail['kapan'] ?? '';
+        }
 
-            // Resiko jatuh
-            $resikoJatuh = $data['resiko_jatuh'] ?? [];
-            $this->resiko_jatuh_items = $resikoJatuh['items'] ?? [];
-            $this->total_resiko_jatuh = $resikoJatuh['total'] ?? 0;
-            $this->kategori_resiko_jatuh = $resikoJatuh['kategori'] ?? '';
+        // Resiko jatuh - Safe handling
+        $resikoJatuh = $data['resiko_jatuh'] ?? [];
+        $this->total_resiko_jatuh = is_numeric($data['total_resiko_jatuh'] ?? 0) ? (int)$data['total_resiko_jatuh'] : 0;
+        $this->kategori_resiko_jatuh = $data['kategori_resiko_jatuh'] ?? '';
+
+        // Load resiko jatuh items dengan safe checking
+        if (!empty($resikoJatuh) && is_array($resikoJatuh)) {
+            $riskItems = [];
+            foreach ($resikoJatuh as $index => $item) {
+                if (is_array($item) && isset($item['hasil'])) {
+                    $riskKey = 'risk' . (is_numeric($index) ? ($index + 1) : $index);
+                    $riskItems[$riskKey] = is_numeric($item['hasil']) ? (int)$item['hasil'] : 0;
+                }
+            }
+            $this->resiko_jatuh_items = $riskItems;
+        } else {
+            $this->resiko_jatuh_items = [];
         }
     }
 
@@ -428,8 +465,8 @@ class DataForm extends ActiveRecord
      */
     public function getTotalResikoJatuh()
     {
-        if ($this->total_resiko_jatuh) {
-            return $this->total_resiko_jatuh;
+        if (is_numeric($this->total_resiko_jatuh)) {
+            return (int)$this->total_resiko_jatuh;
         }
 
         $total = 0;
@@ -448,7 +485,7 @@ class DataForm extends ActiveRecord
      */
     public function getKategoriResikoJatuh()
     {
-        if ($this->kategori_resiko_jatuh) {
+        if (!empty($this->kategori_resiko_jatuh)) {
             return $this->kategori_resiko_jatuh;
         }
 
@@ -467,21 +504,16 @@ class DataForm extends ActiveRecord
      */
     public function getDisplayData()
     {
-        $data = is_string($this->data) ? json_decode($this->data, true) : $this->data;
-        return $data ?: [];
-    }
-
-    /**
-     * Check if model has custom property (override method signature to match parent)
-     */
-    public function hasProperty($name, $checkVars = true, $checkBehaviors = true)
-    {
-        // Check our custom properties first
-        if (property_exists($this, $name)) {
-            return true;
+        if (empty($this->data)) {
+            return [];
         }
 
-        // Fall back to parent implementation
-        return parent::hasProperty($name, $checkVars, $checkBehaviors);
+        try {
+            $data = is_string($this->data) ? json_decode($this->data, true) : $this->data;
+            return is_array($data) ? $data : [];
+        } catch (\Exception $e) {
+            Yii::error("Error getting display data for ID {$this->id_form_data}: " . $e->getMessage());
+            return [];
+        }
     }
 }

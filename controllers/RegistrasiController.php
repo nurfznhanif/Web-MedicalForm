@@ -27,6 +27,8 @@ class RegistrasiController extends Controller
                 'actions' => [
                     'delete' => ['POST'],
                     'delete-form' => ['POST'],
+                    'hard-delete' => ['POST'],
+                    'hard-delete-form' => ['POST'],
                 ],
             ],
         ];
@@ -97,12 +99,52 @@ class RegistrasiController extends Controller
     }
 
     /**
-     * Hapus registrasi
+     * Hapus registrasi (SOFT DELETE)
      */
     public function actionDelete($id)
     {
-        $this->findModel($id)->delete();
-        Yii::$app->session->setFlash('success', 'Data registrasi berhasil dihapus.');
+        try {
+            $model = $this->findModel($id);
+
+            // Soft delete semua form terkait dulu
+            DataForm::updateAll(
+                ['is_delete' => true, 'update_time_at' => new \yii\db\Expression('NOW()')],
+                ['id_registrasi' => $id]
+            );
+
+            // Hapus registrasi
+            if ($model->delete()) {
+                Yii::$app->session->setFlash('success', 'Data registrasi berhasil dihapus.');
+            } else {
+                Yii::$app->session->setFlash('error', 'Gagal menghapus data registrasi.');
+            }
+        } catch (\Exception $e) {
+            Yii::$app->session->setFlash('error', 'Error: ' . $e->getMessage());
+        }
+
+        return $this->redirect(['index']);
+    }
+
+    /**
+     * HARD DELETE - Hapus permanen registrasi
+     */
+    public function actionHardDelete($id)
+    {
+        try {
+            $model = $this->findModel($id);
+
+            // Hapus semua form data terkait dulu (HARD DELETE)
+            $formDeleteCount = DataForm::deleteAll(['id_registrasi' => $id]);
+
+            // Hapus registrasi
+            if ($model->delete()) {
+                Yii::$app->session->setFlash('success', "Data registrasi dan $formDeleteCount form berhasil dihapus permanen.");
+            } else {
+                Yii::$app->session->setFlash('error', 'Gagal menghapus data registrasi.');
+            }
+        } catch (\Exception $e) {
+            Yii::$app->session->setFlash('error', 'Error: ' . $e->getMessage());
+        }
 
         return $this->redirect(['index']);
     }
@@ -131,7 +173,6 @@ class RegistrasiController extends Controller
         return $this->render('input-form', [
             'model' => $model,
             'registrasi' => $registrasi,
-            'isEdit' => false
         ]);
     }
 
@@ -147,7 +188,10 @@ class RegistrasiController extends Controller
             // Process form data
             $this->processFormData($model, Yii::$app->request->post());
 
-            if ($model->save()) {
+            // Set the data directly instead of relying on beforeSave
+            $model->data = $model->prepareFormDataForSave();
+
+            if ($model->save(false)) { // Skip validation for now
                 Yii::$app->session->setFlash('success', 'Data form medis berhasil diupdate.');
                 return $this->redirect(['view-form', 'id' => $model->id_form_data]);
             } else {
@@ -155,96 +199,63 @@ class RegistrasiController extends Controller
             }
         }
 
-        // Load existing data into model properties for form
-        $this->loadExistingDataToModel($model);
-
         return $this->render('edit-form', [
             'model' => $model,
             'registrasi' => $registrasi,
-            'isEdit' => true
         ]);
     }
 
     /**
-     * Load existing data to model properties for editing
+     * Hapus form data medis (SOFT DELETE)
      */
-    private function loadExistingDataToModel($model)
+    public function actionDeleteForm($id)
     {
-        $data = $model->getDisplayData();
+        try {
+            $model = $this->findDataFormModel($id);
+            $id_registrasi = $model->id_registrasi;
 
-        if (!empty($data)) {
-            // Basic info
-            $model->tanggal_pengkajian = $data['tanggal_pengkajian'] ?? '';
-            $model->jam_pengkajian = $data['jam_pengkajian'] ?? '';
-            $model->poliklinik = $data['poliklinik'] ?? '';
+            $model->is_delete = true;
+            $model->update_time_at = new \yii\db\Expression('NOW()');
 
-            // Pengkajian saat datang
-            $model->cara_masuk = $data['cara_masuk'] ?? '';
-            $model->anamnesis = $data['anamnesis'] ?? '';
-            $model->anamnesis_diperoleh = $data['anamnesis_detail']['diperoleh'] ?? '';
-            $model->anamnesis_hubungan = $data['anamnesis_detail']['hubungan'] ?? '';
-            $model->alergi = $data['alergi'] ?? '';
-            $model->keluhan_utama = $data['keluhan_utama'] ?? '';
-
-            // Pemeriksaan fisik
-            $fisik = $data['pemeriksaan_fisik'] ?? [];
-            $model->keadaan_umum = $fisik['keadaan_umum'] ?? '';
-            $model->warna_kulit = $fisik['warna_kulit'] ?? '';
-            $model->kesadaran = $fisik['kesadaran'] ?? '';
-
-            // Tanda vital
-            $vital = $fisik['tanda_vital'] ?? [];
-            $model->tanda_vital_td = $vital['td'] ?? '';
-            $model->tanda_vital_p = $vital['p'] ?? '';
-            $model->tanda_vital_n = $vital['n'] ?? '';
-            $model->tanda_vital_s = $vital['s'] ?? '';
-
-            // Fungsional
-            $fungsional = $fisik['fungsional'] ?? [];
-            $model->fungsi_alat_bantu = $fungsional['alat_bantu'] ?? '';
-            $model->fungsi_prothesa = $fungsional['prothesa'] ?? '';
-            $model->fungsi_cacat_tubuh = $fungsional['cacat_tubuh'] ?? '';
-            $model->fungsi_adl = $fungsional['adl'] ?? '';
-            $model->riwayat_jatuh_fungsional = $fungsional['riwayat_jatuh'] ?? '';
-
-            // Antropometri
-            $antro = $fisik['antropometri'] ?? [];
-            $model->antro_berat = $antro['berat'] ?? '';
-            $model->antro_tinggi = $antro['tinggi'] ?? '';
-            $model->antro_lingkar = $antro['lingkar'] ?? '';
-            $model->antro_imt = $antro['imt'] ?? '';
-
-            $model->status_gizi = $data['status_gizi'] ?? '';
-
-            // Riwayat penyakit
-            $riwayat = $data['riwayat_penyakit'] ?? [];
-            $model->riwayat_penyakit_sekarang = $riwayat['sekarang'] ?? '';
-            $model->riwayat_penyakit_sebelumnya = $riwayat['sebelumnya'] ?? '';
-            $model->riwayat_penyakit_keluarga = $riwayat['keluarga'] ?? '';
-
-            // Riwayat operasi dan rawat inap
-            $model->riwayat_operasi = $data['riwayat_operasi'] ?? '';
-            $operasiDetail = $data['operasi_detail'] ?? [];
-            $model->operasi_detail_apa = $operasiDetail['apa'] ?? '';
-            $model->operasi_detail_kapan = $operasiDetail['kapan'] ?? '';
-
-            $model->riwayat_pernah_dirawat = $data['riwayat_pernah_dirawat'] ?? '';
-            $dirawatDetail = $data['dirawat_detail'] ?? [];
-            $model->dirawat_detail_penyakit = $dirawatDetail['penyakit'] ?? '';
-            $model->dirawat_detail_kapan = $dirawatDetail['kapan'] ?? '';
-
-            // Load resiko jatuh untuk edit
-            $resikoJatuh = $data['resiko_jatuh'] ?? [];
-            $resikoItems = [];
-            if (!empty($resikoJatuh)) {
-                foreach ($resikoJatuh as $index => $item) {
-                    $resikoItems['risk' . ($index + 1)] = (int)($item['hasil'] ?? 0);
-                }
+            if ($model->save(false)) {
+                Yii::$app->session->setFlash('success', 'Data form medis berhasil dihapus.');
+            } else {
+                Yii::$app->session->setFlash('error', 'Gagal menghapus form medis.');
             }
-            $model->resiko_jatuh_items = $resikoItems;
-            $model->total_resiko_jatuh = $data['total_resiko_jatuh'] ?? 0;
-            $model->kategori_resiko_jatuh = $data['kategori_resiko_jatuh'] ?? '';
+        } catch (\Exception $e) {
+            Yii::$app->session->setFlash('error', 'Error: ' . $e->getMessage());
         }
+
+        return $this->redirect(['view', 'id' => $id_registrasi ?? 1]);
+    }
+
+    /**
+     * HARD DELETE - Hapus permanen form data medis
+     */
+    public function actionHardDeleteForm($id)
+    {
+        try {
+            // Cari model tanpa filter is_delete karena mau hard delete
+            $model = DataForm::findOne(['id_form_data' => $id]);
+
+            if (!$model) {
+                throw new NotFoundHttpException('Data form tidak ditemukan.');
+            }
+
+            $id_registrasi = $model->id_registrasi;
+
+            // HARD DELETE - hapus permanen dari database
+            if ($model->delete()) {
+                Yii::$app->session->setFlash('success', 'Form berhasil dihapus permanen dari database.');
+            } else {
+                Yii::$app->session->setFlash('error', 'Gagal menghapus form dari database.');
+            }
+        } catch (\Exception $e) {
+            Yii::$app->session->setFlash('error', 'Error: ' . $e->getMessage());
+            $id_registrasi = 1; // fallback
+        }
+
+        return $this->redirect(['view', 'id' => $id_registrasi]);
     }
 
     /**
@@ -258,18 +269,18 @@ class RegistrasiController extends Controller
 
             // Set individual properties
             foreach ($formData as $key => $value) {
-                if ($model->hasAttribute($key) || property_exists($model, $key)) {
+                if (property_exists($model, $key)) {
                     $model->$key = $value;
                 }
             }
         }
 
         // Process additional fields
-        if (isset($postData['diperoleh'])) {
-            $model->anamnesis_diperoleh = $postData['diperoleh'];
+        if (isset($postData['anamnesis_diperoleh'])) {
+            $model->anamnesis_diperoleh = $postData['anamnesis_diperoleh'];
         }
-        if (isset($postData['hubungan'])) {
-            $model->anamnesis_hubungan = $postData['hubungan'];
+        if (isset($postData['anamnesis_hubungan'])) {
+            $model->anamnesis_hubungan = $postData['anamnesis_hubungan'];
         }
         if (isset($postData['operasi_apa'])) {
             $model->operasi_detail_apa = $postData['operasi_apa'];
@@ -286,21 +297,27 @@ class RegistrasiController extends Controller
 
         // Process risk assessment data
         $riskData = [];
+        $totalRisk = 0;
         for ($i = 1; $i <= 6; $i++) {
-            if (isset($postData["risk{$i}"])) {
-                $riskData["risk{$i}"] = (int)$postData["risk{$i}"];
+            $riskKey = "risk{$i}";
+            if (isset($postData[$riskKey])) {
+                $value = (int)$postData[$riskKey];
+                $riskData[$riskKey] = $value;
+                $totalRisk += $value;
             }
         }
 
         // Set resiko jatuh items
         $model->resiko_jatuh_items = $riskData;
+        $model->total_resiko_jatuh = $totalRisk;
 
-        // Process hidden risk data if available
-        if (isset($postData['DataForm']['total_resiko_jatuh'])) {
-            $model->total_resiko_jatuh = (int)$postData['DataForm']['total_resiko_jatuh'];
-        }
-        if (isset($postData['DataForm']['kategori_resiko_jatuh'])) {
-            $model->kategori_resiko_jatuh = $postData['DataForm']['kategori_resiko_jatuh'];
+        // Determine risk category
+        if ($totalRisk <= 24) {
+            $model->kategori_resiko_jatuh = 'Tidak berisiko (0-24)';
+        } elseif ($totalRisk <= 44) {
+            $model->kategori_resiko_jatuh = 'Resiko rendah (25-44)';
+        } else {
+            $model->kategori_resiko_jatuh = 'Resiko tinggi (≥45)';
         }
 
         // Auto-calculate IMT if berat and tinggi provided
@@ -334,21 +351,6 @@ class RegistrasiController extends Controller
         return $this->render('print-form', [
             'model' => $model,
         ]);
-    }
-
-    /**
-     * Hapus form data medis
-     */
-    public function actionDeleteForm($id)
-    {
-        $model = $this->findDataFormModel($id);
-        $id_registrasi = $model->id_registrasi;
-
-        $model->is_delete = true;
-        $model->save();
-
-        Yii::$app->session->setFlash('success', 'Data form medis berhasil dihapus.');
-        return $this->redirect(['view', 'id' => $id_registrasi]);
     }
 
     /**

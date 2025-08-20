@@ -88,8 +88,17 @@ $('#dataform-antro_berat, #dataform-antro_tinggi').on('input', hitungIMT);
 
 // Toggle additional fields untuk riwayat operasi dan dirawat
 function toggleAdditionalFields() {
-    $('.operasi-additional').toggle($('input[name=\"DataForm[riwayat_operasi]\"][value=\"Ya\"]').is(':checked'));
-    $('.dirawat-additional').toggle($('input[name=\"DataForm[riwayat_pernah_dirawat]\"][value=\"Ya\"]').is(':checked'));
+    if ($('input[name=\"DataForm[riwayat_operasi]\"][value=\"ya\"]').is(':checked')) {
+        $('#operasiFields').show();
+    } else {
+        $('#operasiFields').hide();
+    }
+    
+    if ($('input[name=\"DataForm[riwayat_pernah_dirawat]\"][value=\"ya\"]').is(':checked')) {
+        $('#dirawatFields').show();
+    } else {
+        $('#dirawatFields').hide();
+    }
 }
 
 $('input[name=\"DataForm[riwayat_operasi]\"], input[name=\"DataForm[riwayat_pernah_dirawat]\"]').change(toggleAdditionalFields);
@@ -97,32 +106,49 @@ $('input[name=\"DataForm[riwayat_operasi]\"], input[name=\"DataForm[riwayat_pern
 // Hitung total resiko jatuh
 function hitungResikoJatuh() {
     var total = 0;
-    $('.resiko-input').each(function() {
+    $('.risk-input').each(function() {
         var nilai = parseInt($(this).val()) || 0;
         total += nilai;
+        
+        // Update individual result input
+        var riskNum = $(this).attr('name').replace('risk', '');
+        $('input[name=\"result_' + riskNum + '\"]').val(nilai);
     });
+    
     $('#total-resiko').text(total);
+    $('#total_score').val(total);
     
     var kategori = '';
+    var badgeClass = '';
     if (total <= 24) {
-        kategori = 'Tidak beresiko (0-24)';
-        $('#kategori-resiko').removeClass().addClass('badge badge-success');
+        kategori = 'Tidak berisiko (0-24)';
+        badgeClass = 'bg-success';
     } else if (total <= 44) {
         kategori = 'Resiko rendah (25-44)';
-        $('#kategori-resiko').removeClass().addClass('badge badge-warning');
+        badgeClass = 'bg-warning';
     } else {
-        kategori = 'Resiko tinggi (>=45)';
-        $('#kategori-resiko').removeClass().addClass('badge badge-danger');
+        kategori = 'Resiko tinggi (≥45)';
+        badgeClass = 'bg-danger';
     }
-    $('#kategori-resiko').text(kategori);
+    $('#kategori-resiko').removeClass().addClass('badge ' + badgeClass).text(kategori);
 }
 
-$('.resiko-input').on('input', hitungResikoJatuh);
+$('.risk-input').on('change', hitungResikoJatuh);
 
 // Initialize
 $(document).ready(function() {
     toggleAdditionalFields();
     hitungResikoJatuh();
+    
+    // Auto-set current date and time for new forms
+    if (!'" . $isEdit . "') {
+        if (!$('#dataform-tanggal_pengkajian').val()) {
+            $('#dataform-tanggal_pengkajian').val('" . date('Y-m-d') . "');
+        }
+        if (!$('#dataform-jam_pengkajian').val()) {
+            $('#dataform-jam_pengkajian').val('" . date('H:i') . "');
+        }
+    }
 });
 ");
 ?>
@@ -134,7 +160,7 @@ $(document).ready(function() {
             <strong>Tanggal Lahir:</strong> <?= $registrasi->tanggal_lahir ? date('d/m/Y', strtotime($registrasi->tanggal_lahir)) : '-' ?><br>
             <strong>No. RM:</strong> <?= Html::encode($registrasi->no_rekam_medis) ?>
         </div>
-        <div class="col-md-6 text-right">
+        <div class="col-md-6 text-end">
             <div class="border p-2" style="display: inline-block;">
                 <strong>Petugas:</strong><br>
                 <strong>Tanggal/Pukul:</strong> <?= date('d/m/Y H:i') ?><br>
@@ -152,14 +178,10 @@ $(document).ready(function() {
     <h4>Informasi Pengkajian</h4>
     <div class="row">
         <div class="col-md-4">
-            <?= $form->field($model, 'tanggal_pengkajian')->input('date', [
-                'value' => $model->tanggal_pengkajian ?: date('Y-m-d')
-            ]) ?>
+            <?= $form->field($model, 'tanggal_pengkajian')->input('date') ?>
         </div>
         <div class="col-md-4">
-            <?= $form->field($model, 'jam_pengkajian')->input('time', [
-                'value' => $model->jam_pengkajian ?: date('H:i')
-            ]) ?>
+            <?= $form->field($model, 'jam_pengkajian')->input('time') ?>
         </div>
         <div class="col-md-4">
             <?= $form->field($model, 'poliklinik')->textInput([
@@ -189,6 +211,18 @@ $(document).ready(function() {
             <div class="checkbox-group">
                 <?= Html::radio('DataForm[anamnesis]', $model->anamnesis == 'autoanamnesis', ['label' => 'Autoanamnesis', 'value' => 'autoanamnesis']) ?>
                 <?= Html::radio('DataForm[anamnesis]', $model->anamnesis == 'aloanamnesis', ['label' => 'Aloanamnesis', 'value' => 'aloanamnesis']) ?>
+            </div>
+            <div class="mt-2">
+                <div class="row">
+                    <div class="col-6">
+                        <label>Diperoleh:</label>
+                        <?= Html::textInput('anamnesis_diperoleh', $model->anamnesis_diperoleh, ['class' => 'form-control form-control-sm']) ?>
+                    </div>
+                    <div class="col-6">
+                        <label>Hubungan:</label>
+                        <?= Html::textInput('anamnesis_hubungan', $model->anamnesis_hubungan, ['class' => 'form-control form-control-sm']) ?>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -249,61 +283,59 @@ $(document).ready(function() {
             <div class="vital-signs">
                 <div>
                     <label>TD:</label>
-                    <?= Html::textInput('DataForm[tanda_vital_td]', $model->tanda_vital_td ?: '130/92 mmHg', ['class' => 'form-control']) ?>
+                    <?= $form->field($model, 'tanda_vital_td', ['template' => '{input}'])->textInput(['placeholder' => '130/92 mmHg']) ?>
                 </div>
                 <div>
                     <label>P:</label>
-                    <?= Html::textInput('DataForm[tanda_vital_p]', $model->tanda_vital_p ?: 'x/menit', ['class' => 'form-control']) ?>
+                    <?= $form->field($model, 'tanda_vital_p', ['template' => '{input}'])->textInput(['placeholder' => 'x/menit']) ?>
                 </div>
                 <div>
                     <label>N:</label>
-                    <?= Html::textInput('DataForm[tanda_vital_n]', $model->tanda_vital_n ?: '124 x/menit', ['class' => 'form-control']) ?>
+                    <?= $form->field($model, 'tanda_vital_n', ['template' => '{input}'])->textInput(['placeholder' => '124 x/menit']) ?>
                 </div>
                 <div>
                     <label>S:</label>
-                    <?= Html::textInput('DataForm[tanda_vital_s]', $model->tanda_vital_s ?: '36 oC', ['class' => 'form-control']) ?>
+                    <?= $form->field($model, 'tanda_vital_s', ['template' => '{input}'])->textInput(['placeholder' => '36 oC']) ?>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Fungsional -->
+    <!-- Fungsional dan Antropometri -->
     <div class="row mt-3">
-        <div class="col-md-12">
+        <div class="col-md-6">
             <label><strong>Fungsional:</strong></label>
-            <div class="row">
-                <div class="col-md-6">
-                    <div>1. Alat bantu: <?= Html::textInput('DataForm[fungsi_alat_bantu]', $model->fungsi_alat_bantu, ['class' => 'form-control']) ?></div>
-                    <div>2. Prothesa: <?= Html::textInput('DataForm[fungsi_prothesa]', $model->fungsi_prothesa, ['class' => 'form-control']) ?></div>
-                    <div>3. Cacat tubuh: <?= Html::textInput('DataForm[fungsi_cacat_tubuh]', $model->fungsi_cacat_tubuh, ['class' => 'form-control']) ?></div>
-                    <div>4. ADL: <?= Html::textInput('DataForm[fungsi_adl]', $model->fungsi_adl, ['class' => 'form-control']) ?></div>
-                    <div>5. Riwayat jatuh: <?= Html::textInput('DataForm[mandiri]', 'Mandiri', ['class' => 'form-control']) ?></div>
+            <div>
+                <div class="mb-2">1. Alat bantu: <?= $form->field($model, 'fungsi_alat_bantu', ['template' => '{input}'])->textInput() ?></div>
+                <div class="mb-2">2. Prothesa: <?= $form->field($model, 'fungsi_prothesa', ['template' => '{input}'])->textInput() ?></div>
+                <div class="mb-2">3. Cacat tubuh: <?= $form->field($model, 'fungsi_cacat_tubuh', ['template' => '{input}'])->textInput() ?></div>
+                <div class="mb-2">4. ADL: <?= $form->field($model, 'fungsi_adl', ['template' => '{input}'])->textInput() ?></div>
+                <div class="mb-2">5. Riwayat jatuh: <?= $form->field($model, 'riwayat_jatuh_fungsional', ['template' => '{input}'])->textInput(['placeholder' => 'Mandiri']) ?></div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <label><strong>Antropometri:</strong></label>
+            <div class="antropometri-grid">
+                <div>
+                    <label>Berat (Kg):</label>
+                    <?= $form->field($model, 'antro_berat', ['template' => '{input}'])->textInput(['placeholder' => '62', 'id' => 'dataform-antro_berat']) ?>
                 </div>
-                <div class="col-md-6">
-                    <label><strong>Antropometri:</strong></label>
-                    <div class="antropometri-grid">
-                        <div>
-                            <label>Berat (Kg):</label>
-                            <?= $form->field($model, 'antro_berat', ['template' => '{input}'])->textInput(['placeholder' => '62', 'id' => 'dataform-antro_berat']) ?>
-                        </div>
-                        <div>
-                            <label>Tinggi (Cm):</label>
-                            <?= $form->field($model, 'antro_tinggi', ['template' => '{input}'])->textInput(['placeholder' => '50', 'id' => 'dataform-antro_tinggi']) ?>
-                        </div>
-                        <div>
-                            <label>Panjang badan (PB) (Cm):</label>
-                            <?= $form->field($model, 'antro_lingkar', ['template' => '{input}'])->textInput(['placeholder' => 'Cm']) ?>
-                        </div>
-                        <div>
-                            <label>Lingkar kepala (LK) (Cm):</label>
-                            <?= Html::textInput('lingkar_kepala', '', ['class' => 'form-control', 'placeholder' => 'Cm']) ?>
-                        </div>
-                        <div>
-                            <label>IMT:</label>
-                            <?= $form->field($model, 'antro_imt', ['template' => '{input}'])->textInput(['readonly' => true, 'id' => 'dataform-antro_imt']) ?>
-                            <small id="imt-kategori" class="text-muted"></small>
-                        </div>
-                    </div>
+                <div>
+                    <label>Tinggi (Cm):</label>
+                    <?= $form->field($model, 'antro_tinggi', ['template' => '{input}'])->textInput(['placeholder' => '50', 'id' => 'dataform-antro_tinggi']) ?>
+                </div>
+                <div>
+                    <label>Panjang badan (PB) (Cm):</label>
+                    <?= $form->field($model, 'antro_lingkar', ['template' => '{input}'])->textInput(['placeholder' => 'Cm']) ?>
+                </div>
+                <div>
+                    <label>Lingkar kepala (LK) (Cm):</label>
+                    <?= Html::textInput('lingkar_kepala', '', ['class' => 'form-control', 'placeholder' => 'Cm']) ?>
+                </div>
+                <div>
+                    <label>IMT:</label>
+                    <?= $form->field($model, 'antro_imt', ['template' => '{input}'])->textInput(['readonly' => true, 'id' => 'dataform-antro_imt']) ?>
+                    <small id="imt-kategori" class="text-muted"></small>
                 </div>
             </div>
         </div>
@@ -361,27 +393,27 @@ $(document).ready(function() {
         <div class="col-md-6">
             <label><strong>9. Riwayat operasi:</strong></label>
             <div>
-                <?= Html::radio('DataForm[riwayat_operasi]', $model->riwayat_operasi == 'Tidak', ['label' => 'Tidak', 'value' => 'Tidak']) ?>
-                <?= Html::radio('DataForm[riwayat_operasi]', $model->riwayat_operasi == 'Ya', ['label' => 'Ya', 'value' => 'Ya']) ?>
+                <?= Html::radio('DataForm[riwayat_operasi]', $model->riwayat_operasi == 'tidak', ['label' => 'Tidak', 'value' => 'tidak']) ?>
+                <?= Html::radio('DataForm[riwayat_operasi]', $model->riwayat_operasi == 'ya', ['label' => 'Ya', 'value' => 'ya']) ?>
             </div>
-            <div class="operasi-additional" style="display: none;">
+            <div id="operasiFields" style="display: none;" class="mt-2">
                 <label>Operasi apa?</label>
-                <?= Html::textInput('operasi_apa', 'APP', ['class' => 'form-control']) ?>
+                <?= Html::textInput('operasi_apa', $model->operasi_detail_apa, ['class' => 'form-control', 'placeholder' => 'APP']) ?>
                 <label>Kapan?</label>
-                <?= Html::textInput('operasi_kapan', '2017', ['class' => 'form-control']) ?>
+                <?= Html::textInput('operasi_kapan', $model->operasi_detail_kapan, ['class' => 'form-control', 'placeholder' => '2017']) ?>
             </div>
         </div>
         <div class="col-md-6">
             <label><strong>10. Riwayat pernah dirawat di RS:</strong></label>
             <div>
-                <?= Html::radio('DataForm[riwayat_pernah_dirawat]', $model->riwayat_pernah_dirawat == 'Tidak', ['label' => 'Tidak', 'value' => 'Tidak']) ?>
-                <?= Html::radio('DataForm[riwayat_pernah_dirawat]', $model->riwayat_pernah_dirawat == 'Ya', ['label' => 'Ya', 'value' => 'Ya']) ?>
+                <?= Html::radio('DataForm[riwayat_pernah_dirawat]', $model->riwayat_pernah_dirawat == 'tidak', ['label' => 'Tidak', 'value' => 'tidak']) ?>
+                <?= Html::radio('DataForm[riwayat_pernah_dirawat]', $model->riwayat_pernah_dirawat == 'ya', ['label' => 'Ya', 'value' => 'ya']) ?>
             </div>
-            <div class="dirawat-additional" style="display: none;">
+            <div id="dirawatFields" style="display: none;" class="mt-2">
                 <label>Penyakit apa?</label>
-                <?= Html::textInput('dirawat_penyakit', 'post app', ['class' => 'form-control']) ?>
+                <?= Html::textInput('penyakit_apa', $model->dirawat_detail_penyakit, ['class' => 'form-control', 'placeholder' => 'post app']) ?>
                 <label>Kapan?</label>
-                <?= Html::textInput('dirawat_kapan', '2017', ['class' => 'form-control']) ?>
+                <?= Html::textInput('dirawat_kapan', $model->dirawat_detail_kapan, ['class' => 'form-control', 'placeholder' => '2017']) ?>
             </div>
         </div>
     </div>
@@ -391,71 +423,120 @@ $(document).ready(function() {
 <div class="form-section">
     <h4>15. Pengkajian resiko jatuh</h4>
 
-    <table class="resiko-table">
-        <thead>
-            <tr>
-                <th>No</th>
-                <th>Resiko</th>
-                <th>Skala</th>
-                <th>Hasil</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr>
-                <td>1</td>
-                <td>Riwayat jatuh yang baru atau dalam 3 bulan terakhir</td>
-                <td>Tidak = 0<br>Ya = 25</td>
-                <td><?= Html::textInput('resiko[0][hasil]', '25', ['class' => 'form-control resiko-input']) ?></td>
-            </tr>
-            <tr>
-                <td>2</td>
-                <td>Diagnosa medis sekunder > 1</td>
-                <td>Tidak = 0<br>Ya = 15</td>
-                <td><?= Html::textInput('resiko[1][hasil]', '15', ['class' => 'form-control resiko-input']) ?></td>
-            </tr>
-            <tr>
-                <td>3</td>
-                <td>Alat bantu jalan: Mandiri, bedrest, dibantu perawat, kursi roda<br>Penopang, tongkat/walker<br>Mencengkeram furniture/sesuatu untuk topangan</td>
-                <td>0<br>15<br>15</td>
-                <td><?= Html::textInput('resiko[2][hasil]', '0', ['class' => 'form-control resiko-input']) ?></td>
-            </tr>
-            <tr>
-                <td>4</td>
-                <td>Ad akses IV atau terapi heparin lock</td>
-                <td>Tidak = 0<br>Ya = 20</td>
-                <td><?= Html::textInput('resiko[3][hasil]', '20', ['class' => 'form-control resiko-input']) ?></td>
-            </tr>
-            <tr>
-                <td>5</td>
-                <td>Cara berjalan/berpindah: Normal, lemah, langkah, diseret<br>Terganggu, perlu bantuan, keseimbangan buruk<br>Orientasi sesuai kemampuan diri<br>Lupa keterbatasan diri</td>
-                <td>0<br>10<br>20<br>0<br>15</td>
-                <td><?= Html::textInput('resiko[4][hasil]', '0', ['class' => 'form-control resiko-input']) ?></td>
-            </tr>
-            <tr>
-                <td>6</td>
-                <td>Status mental:</td>
-                <td></td>
-                <td><?= Html::textInput('resiko[5][hasil]', '0', ['class' => 'form-control resiko-input']) ?></td>
-            </tr>
-        </tbody>
-        <tfoot>
-            <tr>
-                <td colspan="3"><strong>Nilai total</strong></td>
-                <td><strong><span id="total-resiko">60</span></strong></td>
-            </tr>
-            <tr>
-                <td colspan="4">
-                    <span id="kategori-resiko" class="badge badge-danger">Resiko tinggi (>=45)</span><br>
-                    <small>Tidak beresiko: 0-24 | Perawatan yang baik Resiko rendah: 25-44<br>
-                        Lakukan intervensi jatuh standar | Resiko tinggi: >=45<br>
-                        Lakukan intervensi jatuh risiko tinggi</small>
-                </td>
-            </tr>
-        </tfoot>
-    </table>
+    <div class="table-responsive">
+        <table class="resiko-table">
+            <thead>
+                <tr>
+                    <th width="5%">No</th>
+                    <th width="50%">Resiko</th>
+                    <th width="25%">Skala</th>
+                    <th width="20%">Hasil</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>1</td>
+                    <td>Riwayat jatuh yang baru atau dalam 3 bulan terakhir</td>
+                    <td>Tidak = 0<br>Ya = 25</td>
+                    <td>
+                        <select name="risk1" class="form-control risk-input" data-score>
+                            <option value="0" <?= (isset($model->resiko_jatuh_items['risk1']) && $model->resiko_jatuh_items['risk1'] == 0) ? 'selected' : '' ?>>Tidak (0)</option>
+                            <option value="25" <?= (isset($model->resiko_jatuh_items['risk1']) && $model->resiko_jatuh_items['risk1'] == 25) ? 'selected' : '' ?>>Ya (25)</option>
+                        </select>
+                        <?= Html::hiddenInput('result_1', '', ['class' => 'result-input']) ?>
+                    </td>
+                </tr>
+                <tr>
+                    <td>2</td>
+                    <td>Diagnosa medis sekunder > 1</td>
+                    <td>Tidak = 0<br>Ya = 15</td>
+                    <td>
+                        <select name="risk2" class="form-control risk-input">
+                            <option value="0" <?= (isset($model->resiko_jatuh_items['risk2']) && $model->resiko_jatuh_items['risk2'] == 0) ? 'selected' : '' ?>>Tidak (0)</option>
+                            <option value="15" <?= (isset($model->resiko_jatuh_items['risk2']) && $model->resiko_jatuh_items['risk2'] == 15) ? 'selected' : '' ?>>Ya (15)</option>
+                        </select>
+                        <?= Html::hiddenInput('result_2', '', ['class' => 'result-input']) ?>
+                    </td>
+                </tr>
+                <tr>
+                    <td>3</td>
+                    <td>Alat bantu jalan</td>
+                    <td>Mandiri/Bedrest/Dibantu = 0<br>Penopang/Tongkat = 15<br>Mencengkeram furniture = 15</td>
+                    <td>
+                        <select name="risk3" class="form-control risk-input">
+                            <option value="0" <?= (isset($model->resiko_jatuh_items['risk3']) && $model->resiko_jatuh_items['risk3'] == 0) ? 'selected' : '' ?>>Mandiri/Bedrest/Dibantu (0)</option>
+                            <option value="15" <?= (isset($model->resiko_jatuh_items['risk3']) && $model->resiko_jatuh_items['risk3'] == 15) ? 'selected' : '' ?>>Penopang/Tongkat (15)</option>
+                        </select>
+                        <?= Html::hiddenInput('result_3', '', ['class' => 'result-input']) ?>
+                    </td>
+                </tr>
+                <tr>
+                    <td>4</td>
+                    <td>Ad akses IV atau terapi heparin lock</td>
+                    <td>Tidak = 0<br>Ya = 20</td>
+                    <td>
+                        <select name="risk4" class="form-control risk-input">
+                            <option value="0" <?= (isset($model->resiko_jatuh_items['risk4']) && $model->resiko_jatuh_items['risk4'] == 0) ? 'selected' : '' ?>>Tidak (0)</option>
+                            <option value="20" <?= (isset($model->resiko_jatuh_items['risk4']) && $model->resiko_jatuh_items['risk4'] == 20) ? 'selected' : '' ?>>Ya (20)</option>
+                        </select>
+                        <?= Html::hiddenInput('result_4', '', ['class' => 'result-input']) ?>
+                    </td>
+                </tr>
+                <tr>
+                    <td>5</td>
+                    <td>Cara berjalan/berpindah</td>
+                    <td>Normal = 0<br>Lemah/Terganggu = 10<br>Orientasi sesuai = 20<br>Lupa keterbatasan = 15</td>
+                    <td>
+                        <select name="risk5" class="form-control risk-input">
+                            <option value="0" <?= (isset($model->resiko_jatuh_items['risk5']) && $model->resiko_jatuh_items['risk5'] == 0) ? 'selected' : '' ?>>Normal (0)</option>
+                            <option value="10" <?= (isset($model->resiko_jatuh_items['risk5']) && $model->resiko_jatuh_items['risk5'] == 10) ? 'selected' : '' ?>>Lemah/Terganggu (10)</option>
+                            <option value="20" <?= (isset($model->resiko_jatuh_items['risk5']) && $model->resiko_jatuh_items['risk5'] == 20) ? 'selected' : '' ?>>Orientasi sesuai (20)</option>
+                            <option value="15" <?= (isset($model->resiko_jatuh_items['risk5']) && $model->resiko_jatuh_items['risk5'] == 15) ? 'selected' : '' ?>>Lupa keterbatasan (15)</option>
+                        </select>
+                        <?= Html::hiddenInput('result_5', '', ['class' => 'result-input']) ?>
+                    </td>
+                </tr>
+                <tr>
+                    <td>6</td>
+                    <td>Status mental</td>
+                    <td>Orientasi baik = 0<br>Lupa keterbatasan = 15</td>
+                    <td>
+                        <select name="risk6" class="form-control risk-input">
+                            <option value="0" <?= (isset($model->resiko_jatuh_items['risk6']) && $model->resiko_jatuh_items['risk6'] == 0) ? 'selected' : '' ?>>Orientasi baik (0)</option>
+                            <option value="15" <?= (isset($model->resiko_jatuh_items['risk6']) && $model->resiko_jatuh_items['risk6'] == 15) ? 'selected' : '' ?>>Lupa keterbatasan (15)</option>
+                        </select>
+                        <?= Html::hiddenInput('result_6', '', ['class' => 'result-input']) ?>
+                    </td>
+                </tr>
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td colspan="3"><strong>Nilai total</strong></td>
+                    <td>
+                        <strong><span id="total-resiko"><?= $model->getTotalResikoJatuh() ?: '0' ?></span></strong>
+                        <?= Html::hiddenInput('total_score', $model->total_resiko_jatuh ?: 0, ['id' => 'total_score']) ?>
+                    </td>
+                </tr>
+                <tr>
+                    <td colspan="4">
+                        <span id="kategori-resiko" class="badge <?= $model->getTotalResikoJatuh() <= 24 ? 'bg-success' : ($model->getTotalResikoJatuh() <= 44 ? 'bg-warning' : 'bg-danger') ?>">
+                            <?= $model->getKategoriResikoJatuh() ?: 'Tidak berisiko (0-24)' ?>
+                        </span><br>
+                        <small class="text-muted">
+                            <strong>Tidak berisiko: 0-24</strong> | Perawatan standar<br>
+                            <strong>Resiko rendah: 25-44</strong> | Lakukan intervensi jatuh standar<br>
+                            <strong>Resiko tinggi: ≥45</strong> | Lakukan intervensi jatuh risiko tinggi
+                        </small>
+                        <?= Html::hiddenInput('DataForm[total_resiko_jatuh]', $model->total_resiko_jatuh ?: 0) ?>
+                        <?= Html::hiddenInput('DataForm[kategori_resiko_jatuh]', $model->kategori_resiko_jatuh ?: 'Tidak berisiko (0-24)') ?>
+                    </td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
 </div>
 
-<div class="form-group">
+<div class="form-group mt-4">
     <?= Html::submitButton($isEdit ? '<i class="fas fa-save"></i> Update Data Form' : '<i class="fas fa-save"></i> Simpan Data Form', [
         'class' => 'btn btn-primary btn-lg'
     ]) ?>

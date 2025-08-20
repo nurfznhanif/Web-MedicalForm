@@ -91,13 +91,24 @@ $this->params['breadcrumbs'][] = $this->title;
                         ]);
                     },
                     'delete' => function ($url, $model, $key) {
-                        return Html::a('<i class="fas fa-trash"></i>', ['delete', 'id' => $model->id_registrasi], [
+                        return Html::a('<i class="fas fa-trash"></i>', '#', [
                             'title' => 'Hapus',
                             'class' => 'btn btn-sm btn-danger',
-                            'data' => [
-                                'confirm' => 'Apakah Anda yakin ingin menghapus data ini?',
-                                'method' => 'post',
-                            ],
+                            'onclick' => "
+            if (confirm('Apakah Anda yakin ingin menghapus data ini?')) {
+                var form = document.createElement('form');
+                form.method = 'POST';
+                form.action = '" . \yii\helpers\Url::to(['delete', 'id' => $model->id_registrasi]) . "';
+                var token = document.createElement('input');
+                token.type = 'hidden';
+                token.name = '_csrf';
+                token.value = '" . Yii::$app->request->getCsrfToken() . "';
+                form.appendChild(token);
+                document.body.appendChild(form);
+                form.submit();
+            }
+            return false;
+        ",
                         ]);
                     },
                 ],

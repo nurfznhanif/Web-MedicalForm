@@ -30,12 +30,23 @@ if (is_string($data)) {
             <?= Html::a('<i class="fas fa-edit"></i> Edit', ['edit-form', 'id' => $model->id_form_data], [
                 'class' => 'btn btn-warning'
             ]) ?>
-            <?= Html::a('<i class="fas fa-trash"></i> Hapus', ['delete-form', 'id' => $model->id_form_data], [
+            <?= Html::a('<i class="fas fa-trash"></i> Hapus', '#', [
                 'class' => 'btn btn-danger',
-                'data' => [
-                    'confirm' => 'Apakah Anda yakin ingin menghapus form ini?',
-                    'method' => 'post',
-                ],
+                'onclick' => "
+        if (confirm('Apakah Anda yakin ingin menghapus form ini?')) {
+            var form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '" . \yii\helpers\Url::to(['delete-form', 'id' => $model->id_form_data]) . "';
+            var token = document.createElement('input');
+            token.type = 'hidden';
+            token.name = '_csrf';
+            token.value = '" . Yii::$app->request->getCsrfToken() . "';
+            form.appendChild(token);
+            document.body.appendChild(form);
+            form.submit();
+        }
+        return false;
+    ",
             ]) ?>
         </div>
     </div>

@@ -58,9 +58,13 @@ $config = [
                 'registrasi/create' => 'registrasi/create',
                 'registrasi/update/<id:\d+>' => 'registrasi/update',
                 'registrasi/delete/<id:\d+>' => 'registrasi/delete',
+                'registrasi/hard-delete/<id:\d+>' => 'registrasi/hard-delete',
                 'registrasi/input-form/<id:\d+>' => 'registrasi/input-form',
                 'registrasi/edit-form/<id:\d+>' => 'registrasi/edit-form',
+                'registrasi/delete-form/<id:\d+>' => 'registrasi/delete-form',
+                'registrasi/hard-delete-form/<id:\d+>' => 'registrasi/hard-delete-form',
                 'registrasi/print-form/<id:\d+>' => 'registrasi/print-form',
+                'registrasi/view-form/<id:\d+>' => 'registrasi/view-form',
             ],
         ],
         'formatter' => [

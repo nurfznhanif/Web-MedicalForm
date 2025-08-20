@@ -32,12 +32,23 @@ $dataFormProvider = new ActiveDataProvider([
             <?= Html::a('<i class="fas fa-edit"></i> Edit', ['update', 'id' => $model->id_registrasi], [
                 'class' => 'btn btn-warning'
             ]) ?>
-            <?= Html::a('<i class="fas fa-trash"></i> Hapus', ['delete', 'id' => $model->id_registrasi], [
+            <?= Html::a('<i class="fas fa-trash"></i> Hapus Permanen', '#', [
                 'class' => 'btn btn-danger',
-                'data' => [
-                    'confirm' => 'Apakah Anda yakin ingin menghapus data registrasi ini?',
-                    'method' => 'post',
-                ],
+                'onclick' => "
+        if (confirm('Apakah Anda yakin ingin menghapus PERMANEN data registrasi ini?')) {
+            var form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '" . \yii\helpers\Url::to(['hard-delete', 'id' => $model->id_registrasi]) . "';
+            var token = document.createElement('input');
+            token.type = 'hidden';
+            token.name = '_csrf';
+            token.value = '" . Yii::$app->request->getCsrfToken() . "';
+            form.appendChild(token);
+            document.body.appendChild(form);
+            form.submit();
+        }
+        return false;
+    ",
             ]) ?>
         </div>
     </div>
@@ -225,18 +236,25 @@ $dataFormProvider = new ActiveDataProvider([
                                     );
                                 },
                                 'delete' => function ($url, $model, $key) {
-                                    return Html::a(
-                                        '<i class="fas fa-trash"></i>',
-                                        ['delete-form', 'id' => $model->id_form_data],
-                                        [
-                                            'title' => 'Hapus Form',
-                                            'class' => 'btn btn-sm btn-danger',
-                                            'data' => [
-                                                'confirm' => 'Apakah Anda yakin ingin menghapus form ini?',
-                                                'method' => 'post',
-                                            ],
-                                        ]
-                                    );
+                                    return Html::a('<i class="fas fa-trash"></i>', '#', [
+                                        'title' => 'Hapus Form Permanen',
+                                        'class' => 'btn btn-sm btn-danger',
+                                        'onclick' => "
+            if (confirm('Apakah Anda yakin ingin menghapus PERMANEN form ini?')) {
+                var form = document.createElement('form');
+                form.method = 'POST';
+                form.action = '" . \yii\helpers\Url::to(['hard-delete-form', 'id' => $model->id_form_data]) . "';
+                var token = document.createElement('input');
+                token.type = 'hidden';
+                token.name = '_csrf';
+                token.value = '" . Yii::$app->request->getCsrfToken() . "';
+                form.appendChild(token);
+                document.body.appendChild(form);
+                form.submit();
+            }
+            return false;
+        ",
+                                    ]);
                                 },
                             ],
                             'contentOptions' => ['style' => 'white-space: nowrap;'],
