@@ -1,4 +1,6 @@
 -- MEDICAL FORM SYSTEM DATABASE SETUP
+CREATE DATABASE IF NOT EXISTS bigsintegrasi;
+USE bigsintegrasi;
 
 -- 1. CREATE TABLE USERS
 CREATE TABLE IF NOT EXISTS users (
@@ -47,22 +49,3 @@ INSERT INTO registrasi (no_registrasi, no_rekam_medis, nama_pasien, tanggal_lahi
 ('REG20241201002', 'RM24002', 'BUDI SANTOSO', '1985-08-22', '2345678901234567'),
 ('REG20241201003', 'RM24003', 'DEWI SARTIKA', '1992-12-10', '3456789012345678')
 ON CONFLICT (no_registrasi) DO NOTHING;
-
--- 6. CEK DATA USERS
-SELECT 'USERS TABLE:' as info;
-SELECT * FROM users;
-
--- 7. CEK DATA REGISTRASI
-SELECT 'REGISTRASI TABLE:' as info;
-SELECT * FROM registrasi;
-
--- 8. CEK DATA FORM
-SELECT 'DATA_FORM TABLE:' as info;
-SELECT * FROM data_form;
-
--- 9. CREATE INDEXES UNTUK PERFORMANCE
-CREATE INDEX IF NOT EXISTS idx_registrasi_no_registrasi ON registrasi(no_registrasi);
-CREATE INDEX IF NOT EXISTS idx_registrasi_no_rekam_medis ON registrasi(no_rekam_medis);
-CREATE INDEX IF NOT EXISTS idx_registrasi_nik ON registrasi(nik);
-CREATE INDEX IF NOT EXISTS idx_data_form_id_registrasi ON data_form(id_registrasi);
-CREATE INDEX IF NOT EXISTS idx_data_form_create_time ON data_form(create_time_at);

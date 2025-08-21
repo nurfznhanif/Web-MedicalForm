@@ -3,7 +3,7 @@ return [
     'class' => 'yii\db\Connection',
     'dsn' => 'pgsql:host=localhost;port=5432;dbname=bigsintegrasi',
     'username' => 'postgres',
-    'password' => 'misterhan19',
+    'password' => '',
     'charset' => 'utf8',
 
     // Schema cache options (for production environment)
