@@ -49,7 +49,7 @@ Medical Form System adalah aplikasi web untuk mengelola pengkajian keperawatan d
    ```php
    return [
        'class' => 'yii\db\Connection',
-       'dsn' => 'pgsql:host=localhost;port=5432;dbname=medical_form_db',
+       'dsn' => 'pgsql:host=localhost;port=5432;dbname=bigsintegrasi',
        'username' => 'Sesuaikan',
        'password' => 'Sesuaikan',
        'charset' => 'utf8',
