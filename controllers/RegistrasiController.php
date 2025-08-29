@@ -42,9 +42,75 @@ class RegistrasiController extends Controller
                     'delete-form' => ['POST'],
                     'hard-delete' => ['POST'],
                     'hard-delete-form' => ['POST'],
+                    'check-nik' => ['POST'], // ⭐ TAMBAHAN BARU: AJAX untuk cek NIK
                 ],
             ],
         ];
+    }
+
+    /**
+     * ⭐ AJAX: Cek NIK sudah ada atau belum (SOLUSI UTAMA VALIDASI NIK)
+     */
+    public function actionCheckNik()
+    {
+        Yii::$app->response->format = Response::FORMAT_JSON;
+
+        $nik = trim(Yii::$app->request->post('nik', ''));
+        $excludeId = Yii::$app->request->post('exclude_id'); // Untuk mode update
+
+        // Validasi input kosong
+        if (empty($nik)) {
+            return [
+                'valid' => true,
+                'message' => ''
+            ];
+        }
+
+        // Validasi format NIK (16 digit angka)
+        if (!preg_match('/^[0-9]{16}$/', $nik)) {
+            return [
+                'valid' => false,
+                'message' => 'NIK harus berupa 16 digit angka'
+            ];
+        }
+
+        try {
+            // Query untuk cek NIK sudah ada
+            $query = Registrasi::find()->where(['nik' => $nik]);
+
+            // Jika mode update, exclude record yang sedang di-edit
+            if (!empty($excludeId)) {
+                $query->andWhere(['!=', 'id_registrasi', $excludeId]);
+            }
+
+            $existingRecord = $query->one();
+
+            if ($existingRecord) {
+                return [
+                    'valid' => false,
+                    'message' => "NIK {$nik} sudah terdaftar atas nama: " . strtoupper($existingRecord->nama_pasien),
+                    'existing_data' => [
+                        'nama' => $existingRecord->nama_pasien,
+                        'no_registrasi' => $existingRecord->no_registrasi,
+                        'no_rekam_medis' => $existingRecord->no_rekam_medis,
+                        'tanggal_lahir' => $existingRecord->tanggal_lahir
+                    ]
+                ];
+            }
+
+            return [
+                'valid' => true,
+                'message' => 'NIK tersedia'
+            ];
+        } catch (\Exception $e) {
+            // Log error untuk debugging
+            Yii::error("Error checking NIK: " . $e->getMessage(), __METHOD__);
+
+            return [
+                'valid' => false,
+                'message' => 'Terjadi kesalahan saat validasi NIK. Silakan coba lagi.'
+            ];
+        }
     }
 
     /**
@@ -88,16 +154,34 @@ class RegistrasiController extends Controller
     }
 
     /**
-     * Membuat registrasi baru
+     * Membuat registrasi baru - ⭐ DENGAN VALIDASI NIK UNIK
      */
     public function actionCreate()
     {
         $model = new Registrasi();
         $model->create_by = Yii::$app->user->id;
 
-        if ($model->load(Yii::$app->request->post()) && $model->save()) {
-            Yii::$app->session->setFlash('success', 'Data registrasi berhasil disimpan.');
-            return $this->redirect(['view', 'id' => $model->id_registrasi]);
+        if ($model->load(Yii::$app->request->post())) {
+            // ⭐ VALIDASI NIK SEBELUM SAVE
+            if ($model->validate()) {
+                if ($model->save()) {
+                    Yii::$app->session->setFlash('success', 'Data registrasi berhasil disimpan.');
+                    return $this->redirect(['view', 'id' => $model->id_registrasi]);
+                } else {
+                    Yii::$app->session->setFlash('error', 'Gagal menyimpan data: ' . implode(', ', $model->getFirstErrors()));
+                }
+            } else {
+                // Tampilkan error validasi NIK
+                $errors = [];
+                foreach ($model->getErrors() as $field => $fieldErrors) {
+                    if ($field === 'nik') {
+                        $errors[] = '❌ NIK: ' . implode(', ', $fieldErrors);
+                    } else {
+                        $errors[] = ucfirst($field) . ': ' . implode(', ', $fieldErrors);
+                    }
+                }
+                Yii::$app->session->setFlash('error', 'Validasi gagal: ' . implode(' | ', $errors));
+            }
         }
 
         return $this->render('create', [
@@ -106,7 +190,7 @@ class RegistrasiController extends Controller
     }
 
     /**
-     * Edit registrasi
+     * Edit registrasi - ⭐ DENGAN VALIDASI NIK UNIK
      */
     public function actionUpdate($id)
     {
@@ -117,9 +201,27 @@ class RegistrasiController extends Controller
 
         $model->update_by = Yii::$app->user->id;
 
-        if ($model->load(Yii::$app->request->post()) && $model->save()) {
-            Yii::$app->session->setFlash('success', 'Data registrasi berhasil diupdate.');
-            return $this->redirect(['view', 'id' => $model->id_registrasi]);
+        if ($model->load(Yii::$app->request->post())) {
+            // ⭐ VALIDASI NIK SEBELUM SAVE (UPDATE MODE)
+            if ($model->validate()) {
+                if ($model->save()) {
+                    Yii::$app->session->setFlash('success', 'Data registrasi berhasil diupdate.');
+                    return $this->redirect(['view', 'id' => $model->id_registrasi]);
+                } else {
+                    Yii::$app->session->setFlash('error', 'Gagal mengupdate data: ' . implode(', ', $model->getFirstErrors()));
+                }
+            } else {
+                // Tampilkan error validasi NIK
+                $errors = [];
+                foreach ($model->getErrors() as $field => $fieldErrors) {
+                    if ($field === 'nik') {
+                        $errors[] = '❌ NIK: ' . implode(', ', $fieldErrors);
+                    } else {
+                        $errors[] = ucfirst($field) . ': ' . implode(', ', $fieldErrors);
+                    }
+                }
+                Yii::$app->session->setFlash('error', 'Validasi gagal: ' . implode(' | ', $errors));
+            }
         }
 
         return $this->render('update', [

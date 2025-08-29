@@ -8,7 +8,7 @@ use yii\behaviors\TimestampBehavior;
 use yii\db\Expression;
 
 /**
- * Model untuk tabel "registrasi".
+ * Model untuk tabel "registrasi" dengan validasi NIK unik.
  *
  * @property int $id_registrasi
  * @property string $no_registrasi
@@ -57,7 +57,38 @@ class Registrasi extends ActiveRecord
             [['create_by', 'update_by'], 'integer'],
             [['no_registrasi', 'no_rekam_medis', 'nik'], 'string', 'max' => 64],
             [['nama_pasien'], 'string', 'max' => 255],
+
+            // VALIDASI NIK UNIK - SOLUSI UTAMA
+            [['nik'], 'string', 'length' => 16, 'message' => 'NIK harus 16 digit'],
+            [['nik'], 'match', 'pattern' => '/^[0-9]{16}$/', 'message' => 'NIK harus berupa 16 digit angka'],
+            [['nik'], 'unique', 'message' => 'NIK sudah terdaftar dalam sistem. Silakan periksa kembali.'],
+            [['nik'], 'validateNikUnique'], // Custom validator tambahan
         ];
+    }
+
+    /**
+     * Custom validator untuk NIK unik dengan pesan lebih informatif
+     */
+    public function validateNikUnique($attribute, $params)
+    {
+        if (empty($this->$attribute)) {
+            return; // Skip jika NIK kosong
+        }
+
+        // Query untuk cek NIK sudah ada atau belum
+        $query = static::find()->where(['nik' => $this->$attribute]);
+
+        // Jika ini adalah update, exclude record yang sedang di-edit
+        if (!$this->isNewRecord) {
+            $query->andWhere(['!=', 'id_registrasi', $this->id_registrasi]);
+        }
+
+        $existingRecord = $query->one();
+
+        if ($existingRecord) {
+            // Berikan informasi lebih detail tentang NIK yang sudah terdaftar
+            $this->addError($attribute, "NIK {$this->$attribute} sudah terdaftar atas nama: {$existingRecord->nama_pasien} (No. Reg: {$existingRecord->no_registrasi})");
+        }
     }
 
     /**
@@ -107,16 +138,17 @@ class Registrasi extends ActiveRecord
         $sql = "SELECT no_registrasi FROM registrasi WHERE no_registrasi::text LIKE :pattern ORDER BY id_registrasi DESC LIMIT 1";
         $command = Yii::$app->db->createCommand($sql);
         $command->bindValue(':pattern', $prefix . $date . '%');
-        $lastNo = $command->queryScalar();
+        $lastRecord = $command->queryScalar();
 
-        if ($lastNo) {
-            $lastNumber = (int) substr($lastNo, -4);
-            $newNumber = $lastNumber + 1;
+        if ($lastRecord) {
+            // Extract nomor urut dari nomor registrasi terakhir
+            $lastNumber = (int) substr($lastRecord, -3);
+            $newNumber = str_pad($lastNumber + 1, 3, '0', STR_PAD_LEFT);
         } else {
-            $newNumber = 1;
+            $newNumber = '001';
         }
 
-        return $prefix . $date . sprintf('%04d', $newNumber);
+        return $prefix . $date . $newNumber;
     }
 
     /**
@@ -125,29 +157,42 @@ class Registrasi extends ActiveRecord
     private function generateNoRekamMedis()
     {
         $prefix = 'RM';
-        $date = date('y');
+        $year = date('y');
 
-        // Gunakan raw SQL untuk menghindari masalah tipe data PostgreSQL
         $sql = "SELECT no_rekam_medis FROM registrasi WHERE no_rekam_medis::text LIKE :pattern ORDER BY id_registrasi DESC LIMIT 1";
         $command = Yii::$app->db->createCommand($sql);
-        $command->bindValue(':pattern', $prefix . $date . '%');
-        $lastNo = $command->queryScalar();
+        $command->bindValue(':pattern', $prefix . $year . '%');
+        $lastRecord = $command->queryScalar();
 
-        if ($lastNo) {
-            $lastNumber = (int) substr($lastNo, -5);
-            $newNumber = $lastNumber + 1;
+        if ($lastRecord) {
+            $lastNumber = (int) substr($lastRecord, -3);
+            $newNumber = str_pad($lastNumber + 1, 3, '0', STR_PAD_LEFT);
         } else {
-            $newNumber = 1;
+            $newNumber = '001';
         }
 
-        return $prefix . $date . sprintf('%05d', $newNumber);
+        return $prefix . $year . $newNumber;
     }
 
     /**
-     * Relasi dengan data form
+     * Static method untuk cek NIK sudah ada atau belum (untuk AJAX)
      */
-    public function getDataForms()
+    public static function isNikExists($nik, $excludeId = null)
     {
-        return $this->hasMany(DataForm::class, ['id_registrasi' => 'id_registrasi']);
+        $query = static::find()->where(['nik' => $nik]);
+
+        if ($excludeId) {
+            $query->andWhere(['!=', 'id_registrasi', $excludeId]);
+        }
+
+        return $query->exists();
+    }
+
+    /**
+     * Get registrasi by NIK
+     */
+    public static function getByNik($nik)
+    {
+        return static::findOne(['nik' => $nik]);
     }
 }

@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS registrasi (
     no_rekam_medis VARCHAR(64),
     nama_pasien VARCHAR(255) NOT NULL,
     tanggal_lahir DATE,
-    nik VARCHAR(64),
+    nik VARCHAR(64) UNIQUE,
     create_by INTEGER,
     create_time_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     update_by INTEGER,
